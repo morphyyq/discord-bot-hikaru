@@ -81,6 +81,16 @@ client.on(Events.Error, (error) => {
 // CONFIGURATION: MAJESTIC RP FAMILY SERVER
 // =====================================================
 const TARGET_GUILD_ID = "1115707156835074208";
+const FORCED_NICKNAME_USER_ID = "1460619004384382977";
+const FORCED_NICKNAME = "oleg";
+
+async function enforceForcedNickname(member) {
+    if (!member || member.id !== FORCED_NICKNAME_USER_ID) return;
+    if (member.nickname === FORCED_NICKNAME) return;
+    await member.setNickname(FORCED_NICKNAME, "Закреплённый ник пользователя").catch(error => {
+        console.error(`[NICKNAME] Не удалось установить ник ${FORCED_NICKNAME_USER_ID}:`, error.message || error);
+    });
+}
 
 const SERVERS = {
     [TARGET_GUILD_ID]: {
@@ -1240,6 +1250,7 @@ async function initVoiceSessions(guild) {
 // =====================================================
 client.on(Events.GuildMemberAdd, async (member) => {
     try {
+        await enforceForcedNickname(member);
         if (false && member.guild.id === TARGET_GUILD_ID) {
             const darknessGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
             if (darknessGuild) {
@@ -1423,6 +1434,8 @@ client.once(Events.ClientReady, async () => {
 
     const mainGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
     if (mainGuild) {
+        const forcedNicknameMember = await mainGuild.members.fetch(FORCED_NICKNAME_USER_ID).catch(() => null);
+        await enforceForcedNickname(forcedNicknameMember);
         await updateOnlineMonitor();
         await updateAFKEmbed(mainGuild);
         // Создаём панель войс-комнат до долгой синхронизации портфелей.
@@ -7198,6 +7211,7 @@ async function sendRpReportToPersonalChannel(guild, userId, rpData, evidenceUrl)
 
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     try {
+        await enforceForcedNickname(newMember);
         // Роли без @everyone до и после изменения
         const oldRoles = oldMember.roles.cache.filter(r => r.id !== newMember.guild.id);
         const newRoles = newMember.roles.cache.filter(r => r.id !== newMember.guild.id);
