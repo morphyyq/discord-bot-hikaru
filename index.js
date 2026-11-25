@@ -191,7 +191,7 @@ const tempVoiceRooms = new Map(); // ownerId -> temporary voice channel id
 let portfolioRebuildInProgress = false;
 
 // Каналы модерации покупок
-const SHOP_REVIEW_CHANNEL = "1575164282050445495";
+const SHOP_REVIEW_CHANNEL = "1575191861755379732";
 const WARN_PURCHASE_CHANNEL = SHOP_REVIEW_CHANNEL;
 const MAIN_PURCHASE_REVIEW_CHANNEL = SHOP_REVIEW_CHANNEL;
 
@@ -6725,27 +6725,29 @@ function buildPortfolioInfoPayload(member) {
 }
 
 async function ensurePortfolioInfoPanel(member, channel) {
-    if (!channel?.messages) return;
+    if (!member || !channel?.messages) return;
     const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
     if (!messages) return;
 
-    const infoMessages = messages.filter(message =>
-        message.author?.id === client.user.id && (
-            componentsContainText(message.components, "Сюда ты должен кидать") ||
-            componentsContainText(message.components, "Сюда необходимо отправлять") ||
-            componentsContainText(message.components, "Checker:") ||
-            componentsContainText(message.components, "Владелец:") ||
-            componentsContainText(message.components, "Личный канал отчётов") ||
-            message.embeds?.some(embed =>
-                String(embed.title || "").includes("Личный канал отчётов") ||
-                String(embed.title || "").includes("Личный портфель")
-            )
+    const oldHeaderMessages = messages.filter(message =>
+        message.author?.id === client.user.id && message.embeds?.some(embed =>
+            String(embed.title || "").includes("Личный портфель") ||
+            String(embed.title || "").includes("Личный канал отчётов")
         )
     );
-
-    // Старые информационные карточки удаляем, новые больше не публикуем.
-    for (const message of infoMessages.values()) {
+    for (const message of oldHeaderMessages.values()) {
         await message.delete().catch(() => null);
+    }
+
+    const currentMessage = messages.find(message =>
+        message.author?.id === client.user.id &&
+        componentsContainText(message.components, "Владелец:")
+    );
+
+    if (currentMessage) {
+        await currentMessage.edit(buildPortfolioInfoPayload(member)).catch(() => null);
+    } else {
+        await channel.send(buildPortfolioInfoPayload(member)).catch(() => null);
     }
 }
 
