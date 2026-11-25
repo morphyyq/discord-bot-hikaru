@@ -1252,9 +1252,6 @@ client.on(Events.GuildMemberAdd, async (member) => {
             `**Аккаунт создан:** <t:${Math.floor(member.user.createdTimestamp / 1000)}:F>`
         ], { title: "📥 Пользователь зашёл", color: 0x2ECC71 });
 
-        if (member.roles.cache.has(PERSONAL_REPORT_ROLE_ID)) {
-            await ensurePersonalReportChannel(member);
-        }
     } catch (error) {
         console.error("[MEMBER ADD LOG ERROR]", error);
     }
@@ -1428,11 +1425,10 @@ client.once(Events.ClientReady, async () => {
         await ensureVoiceControlPanel();
         await ensureAllLogThreads(mainGuild);
         await ensurePersonalReportCategoryAccess(mainGuild);
-        await migrateForumPortfoliosToChannels(mainGuild);
+        // Портфели не создаются автоматически. Восстанавливаем права только у уже существующих.
         await restoreLegacyPortfolioChannels(mainGuild);
         await removeLegacyPortfolioAdminChannels(mainGuild);
         await normalizePortfolioChannelNames(mainGuild);
-        await initPersonalReportChannels(mainGuild);
         await removePortfolioAdminThreads(mainGuild);
         await ensureAllPortfolioThreads(mainGuild);
         await initTemporaryVoiceRooms(mainGuild);
@@ -4344,10 +4340,12 @@ Main состав — основа нашей семьи. Здесь играю�
             await i.deferReply({ flags: MessageFlags.Ephemeral });
 
             const member = await i.guild.members.fetch(i.user.id).catch(() => null);
-            // Кнопка только открывает уже созданный портфель и никогда не создаёт новый.
-            const result = member
-                ? await ensurePrivatePortfolioChannel(member, { createIfMissing: false })
-                : null;
+            if (!member || !member.roles.cache.has(PERSONAL_REPORT_ROLE_ID)) {
+                await i.editReply({ content: "❌ Портфель доступен только участникам с ролью семьи." });
+                return;
+            }
+            // Портфель создаётся только после нажатия этой кнопки.
+            const result = await ensurePrivatePortfolioChannel(member, { createIfMissing: true });
             const portfolioChannel = result?.channel || null;
 
             if (!portfolioChannel) {
@@ -4379,7 +4377,9 @@ Main состав — основа нашей семьи. Здесь играю�
                     .setURL(`https://discord.com/channels/${i.guild.id}/${portfolioChannel.id}`)
             );
             await i.editReply({
-                content: `✅ Ваш портфель готов: ${portfolioChannel}`,
+                content: result.created
+                    ? `✅ Портфель создан: ${portfolioChannel}`
+                    : `✅ Ваш портфель готов: ${portfolioChannel}`,
                 components: [openPortfolioRow]
             });
             return;
@@ -7000,9 +7000,6 @@ async function initPersonalReportChannels(guild) {
     if (!guild || guild.id !== TARGET_GUILD_ID) return;
     await guild.members.fetch().catch(() => null);
     for (const member of guild.members.cache.values()) {
-        if (member.roles.cache.has(PERSONAL_REPORT_ROLE_ID)) {
-            await ensurePersonalReportChannel(member);
-        }
     }
 }
 
@@ -7186,7 +7183,7 @@ async function sendRpReportToPersonalChannel(guild, userId, rpData, evidenceUrl)
     const member = await guild.members.fetch(userId).catch(() => null);
     if (!member || !member.roles.cache.has(PERSONAL_REPORT_ROLE_ID)) return;
 
-    const channel = await ensurePersonalReportChannel(member);
+    const channel = await findPersonalReportChannel(guild, userId, true);
     if (!channel) return;
 
     const container = new ContainerBuilder()
@@ -7230,7 +7227,7 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
         const removedRoles = oldRoles.filter(role => !newRoles.has(role.id));
 
         if (addedRoles.has(PERSONAL_REPORT_ROLE_ID)) {
-            await ensurePersonalReportChannel(newMember);
+            // Портфель создаётся только вручную кнопкой «Портфель».
             await deletePersonalReportRoleLostNotice(newMember.guild, newMember.id);
         }
         if (removedRoles.has(PERSONAL_REPORT_ROLE_ID)) {
