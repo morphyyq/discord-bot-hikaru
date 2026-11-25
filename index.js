@@ -1140,7 +1140,7 @@ async function initTemporaryVoiceRooms(guild) {
     const channels = await guild.channels.fetch().catch(() => null);
     if (!channels) return;
     for (const channel of channels.values()) {
-        if (channel.type !== ChannelType.GuildVoice || !channel.name.startsWith("🔊・")) continue;
+        if (!channel || channel.type !== ChannelType.GuildVoice || !channel.name?.startsWith("🔊・")) continue;
         const ownerId = getTemporaryVoiceOwner(channel);
         if (ownerId) tempVoiceRooms.set(ownerId, channel.id);
     }
