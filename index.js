@@ -91,7 +91,7 @@ const SERVERS = {
             SALARY: "1575163988189388831",
             PANEL: "1115722732332662905",
             CATEGORY: "1575163211119075659",
-            AUDIT_APP: "1575163848338710568",
+            AUDIT_APP: null,
             MONITOR: null,
             SBOR: null,
             NOTIFY_PROMO: "1575164282050445495",
@@ -359,6 +359,10 @@ async function sendDirectApplicationAudit(guild, channelId, payload) {
 }
 
 async function sendApplicationAudit(guild, { status, data, type, targetId, username, channelId, actorId = null, reason = null }) {
+    // Заявки Recruit идут только в отдельный канал аудита рекрутов.
+    // В общем форуме логов остаются только заявки в семью.
+    if (type === "recruit") return;
+
     const statusConfig = {
         "Подана": { title: "📥 Заявка подана", color: 0x3498DB },
         "Рассмотрена": { title: "⏳ Заявка рассмотрена", color: 0xF1C40F },
@@ -4353,23 +4357,6 @@ Main состав — основа нашей семьи. Здесь играю�
                 return;
             }
 
-            if (result.created) {
-                const curatorId = salary.recruits[i.user.id] || null;
-                const curatorText = curatorId ? `<@${curatorId}>` : "Не назначен";
-                const portfolioEmbed = new EmbedBuilder()
-                    .setTitle("💼 Личный портфель")
-                    .setThumbnail(i.user.displayAvatarURL({ dynamic: true }))
-                    .setDescription(
-                        `**Владелец:** <@${i.user.id}>\n` +
-                        `**Куратор:** ${curatorText}\n` +
-                        `**Дата создания:** ${new Date().toLocaleDateString("ru-RU")}`
-                    )
-                    .setColor("#2b2d31")
-                    .setTimestamp();
-
-                await portfolioChannel.send({ embeds: [portfolioEmbed] }).catch(() => null);
-            }
-
             const openPortfolioRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setLabel("Открыть портфель")
@@ -6725,7 +6712,7 @@ function buildPortfolioInfoPayload(member) {
 }
 
 async function ensurePortfolioInfoPanel(member, channel) {
-    if (!member || !channel?.messages) return;
+    if (!channel?.messages) return;
     const messages = await channel.messages.fetch({ limit: 50 }).catch(() => null);
     if (!messages) return;
 
@@ -6736,24 +6723,16 @@ async function ensurePortfolioInfoPanel(member, channel) {
             componentsContainText(message.components, "Checker:") ||
             componentsContainText(message.components, "Владелец:") ||
             componentsContainText(message.components, "Личный канал отчётов") ||
-            message.embeds?.some(embed => String(embed.title || "").includes("Личный канал отчётов"))
+            message.embeds?.some(embed =>
+                String(embed.title || "").includes("Личный канал отчётов") ||
+                String(embed.title || "").includes("Личный портфель")
+            )
         )
     );
-    const currentMessage = infoMessages.find(message =>
-        componentsContainText(message.components, "Checker:") ||
-        componentsContainText(message.components, "Владелец:") ||
-        componentsContainText(message.components, "Сюда ты должен кидать") ||
-        componentsContainText(message.components, "Сюда необходимо отправлять")
-    );
 
-    if (currentMessage) {
-        await currentMessage.edit(buildPortfolioInfoPayload(member)).catch(() => null);
-    }
+    // Старые информационные карточки удаляем, новые больше не публикуем.
     for (const message of infoMessages.values()) {
-        if (message.id !== currentMessage?.id) await message.delete().catch(() => null);
-    }
-    if (!currentMessage) {
-        await channel.send(buildPortfolioInfoPayload(member)).catch(() => null);
+        await message.delete().catch(() => null);
     }
 }
 
