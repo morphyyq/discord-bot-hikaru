@@ -6297,7 +6297,10 @@ ${data.q5}
                 }
             }
 
-            const hasPermission = config.ALLOWED_ROLES && config.ALLOWED_ROLES.some(role => member.roles.cache.has(role));
+            const allowedButtonRoles = parts[0] === "app"
+                ? getApplicationManagerRoles(config)
+                : (config.ALLOWED_ROLES || []);
+            const hasPermission = allowedButtonRoles.some(role => member.roles.cache.has(role));
             if (!hasPermission) {
                 await i.reply({ content: "❌ У вас нет прав для нажатия этих кнопок.", flags: MessageFlags.Ephemeral });
                 return;
