@@ -7461,11 +7461,15 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
             ]);
         }
 
-        // Условие: раньше ролей было больше одной, теперь осталась ТОЛЬКО 1458410670071615580 и больше ничего
-        const wasMoreThanOne = oldRoles.size > 1;
-        const nowOnlyDeductRole = newRoles.size === 1 && newRoles.has(DEDUCT_ROLE_ID);
+        // Списание при полном снятии ролей или если осталась только роль «Гость».
+        // Раньше проверка требовала больше одной старой роли и не срабатывала,
+        // когда после снятия у участника оставалось ровно 0 ролей.
+        const hadAtLeastOneRole = oldRoles.size > 0;
+        const nowNoRolesOrOnlyGuest =
+            newRoles.size === 0 ||
+            (newRoles.size === 1 && newRoles.has(DEDUCT_ROLE_ID));
 
-        if (!wasMoreThanOne || !nowOnlyDeductRole) return;
+        if (!hadAtLeastOneRole || !nowNoRolesOrOnlyGuest) return;
 
         // Ищем рекрута, который принял этого участника
         const recruiterId = salary.recruits[newMember.id];
