@@ -6341,6 +6341,7 @@ ${data.q5}
             await i.channel.permissionOverwrites.edit(targetId, { ViewChannel: false, SendMessages: false }).catch(() => null);
             await i.channel.setName(`accepted-${targetMember.user.username}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '')).catch(() => null);
             applications.delete(targetId);
+            setTimeout(() => i.channel.delete("Заявка в каптур-состав принята").catch(() => null), 5000);
             return;
         }
 
