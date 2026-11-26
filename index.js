@@ -81,16 +81,6 @@ client.on(Events.Error, (error) => {
 // CONFIGURATION: MAJESTIC RP FAMILY SERVER
 // =====================================================
 const TARGET_GUILD_ID = "1115707156835074208";
-const FORCED_NICKNAME_USER_ID = "1460619004384382977";
-const FORCED_NICKNAME = "oleg";
-
-async function enforceForcedNickname(member) {
-    if (!member || member.id !== FORCED_NICKNAME_USER_ID) return;
-    if (member.nickname === FORCED_NICKNAME) return;
-    await member.setNickname(FORCED_NICKNAME, "Закреплённый ник пользователя").catch(error => {
-        console.error(`[NICKNAME] Не удалось установить ник ${FORCED_NICKNAME_USER_ID}:`, error.message || error);
-    });
-}
 
 const SERVERS = {
     [TARGET_GUILD_ID]: {
@@ -128,10 +118,11 @@ const SERVERS = {
             "1115720822171123842"
         ],
         // Общая роль участника после принятия в семью
-        ACADEMY_ROLES: ["1329516982797865041"],
+        ACADEMY_ROLES: ["1329516982797865041", "1125662483126943794"],
         // Каптур: общая роль плюс текущий ранг C
         CAPTURE_ROLES: [
             "1329516982797865041",
+            "1125662483126943794",
             "1574495524281651310"
         ],
         MAIN_ROLES: [],
@@ -1250,7 +1241,6 @@ async function initVoiceSessions(guild) {
 // =====================================================
 client.on(Events.GuildMemberAdd, async (member) => {
     try {
-        await enforceForcedNickname(member);
         if (false && member.guild.id === TARGET_GUILD_ID) {
             const darknessGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
             if (darknessGuild) {
@@ -1434,8 +1424,6 @@ client.once(Events.ClientReady, async () => {
 
     const mainGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
     if (mainGuild) {
-        const forcedNicknameMember = await mainGuild.members.fetch(FORCED_NICKNAME_USER_ID).catch(() => null);
-        await enforceForcedNickname(forcedNicknameMember);
         await updateOnlineMonitor();
         await updateAFKEmbed(mainGuild);
         // Создаём панель войс-комнат до долгой синхронизации портфелей.
@@ -2930,7 +2918,7 @@ client.on(Events.InteractionCreate, async (i) => {
                                 },
                                 {
                                     type: 10, // Text Display
-                                    content: "## <:hello:1575184951551336635> Путь в семью начинается здесь!\n\n-# <:df:1575184921293488229> Заявки в семью принимаются только на сервере **Orlando**.\n<:df:1575184921293488229> **Внимательно прочитайте все пункты** при подаче заявки. **Если не ответили на все пункты** — заявка будет **отклонена**.\n\n**・Срок рассмотрения заявки:** от 1 до 5 дней.\n**・Важно:** если у вас нет подходящих откатов — заявка будет **отклонена**.\n\n### - Дополнительные правила к подаче заявки:\n<:df:1575184921293488229> Откаты с GG — не более 1 недели назад (не менее 6 минут).\n<:df:1575184921293488229> Откаты с МП (ВЗЗ, MCL, Capt) — не более 60 дней назад. — **__при наличии!__**\n<:df:1575184921293488229> Откаты должны быть не в виде мувика/нарезки.\n<:df:1575184921293488229> Откаты должны быть с сайги и со спешика (минимум 2 отката).\n<:df:1575184921293488229> Подать заявку можно только при открытом наборе. Если нет доступа к подаче — набор закрыт.\n**・Выберите пункт в выпадающем меню:**"
+                                    content: "## <:hello:1575184951551336635> Путь в семью начинается здесь!\n\n-# <:df:1575184921293488229> Заявки в семью принимаются только на сервере **San Francisco**.\n<:df:1575184921293488229> **Внимательно прочитайте все пункты** при подаче заявки. **Если не ответили на все пункты** — заявка будет **отклонена**.\n\n**・Срок рассмотрения заявки:** от 1 до 5 дней.\n**・Важно:** если у вас нет подходящих откатов — заявка будет **отклонена**.\n\n### - Дополнительные правила к подаче заявки:\n<:df:1575184921293488229> Откаты с GG — не более 1 недели назад (не менее 6 минут).\n<:df:1575184921293488229> Откаты с МП (ВЗЗ, MCL, Capt) — не более 60 дней назад. — **__при наличии!__**\n<:df:1575184921293488229> Откаты должны быть не в виде мувика/нарезки.\n<:df:1575184921293488229> Откаты должны быть с сайги и со спешика (минимум 2 отката).\n<:df:1575184921293488229> Подать заявку можно только при открытом наборе. Если нет доступа к подаче — набор закрыт.\n**・Выберите пункт в выпадающем меню:**"
                                 },
                                 {
                                     type: 1, // Action Row
@@ -7213,7 +7201,6 @@ async function sendRpReportToPersonalChannel(guild, userId, rpData, evidenceUrl)
 
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     try {
-        await enforceForcedNickname(newMember);
         // Роли без @everyone до и после изменения
         const oldRoles = oldMember.roles.cache.filter(r => r.id !== newMember.guild.id);
         const newRoles = newMember.roles.cache.filter(r => r.id !== newMember.guild.id);
