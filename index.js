@@ -1871,7 +1871,7 @@ client.on(Events.MessageCreate, async (msg) => {
             ) || msg.attachments.first();
             if (!att) return;
 
-            const hasPermission = config.ALLOWED_ROLES && config.ALLOWED_ROLES.some(role => msg.member.roles.cache.has(role));
+            const hasPermission = getApplicationManagerRoles(config).some(role => msg.member.roles.cache.has(role));
             if (!hasPermission) return;
 
             const channelMessages = await msg.channel.messages.fetch({ limit: 50 }).catch(() => null);
