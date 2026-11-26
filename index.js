@@ -1336,6 +1336,7 @@ client.once(Events.ClientReady, async () => {
         new SlashCommandBuilder().setName("composition_panel").setDescription("Отправить ручную panel контроля состава").setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("main_panel").setDescription("Отправить панель заявки в Main состав").setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("recruit_panel").setDescription("Отправить панель заявки в отдел Recruit").setDefaultMemberPermissions(0),
+        new SlashCommandBuilder().setName("info_panel").setDescription("Отправить информационную панель Majestic RP").setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("rank").setDescription("Посмотреть статистику выполненных отчетов").addUserOption(opt => opt.setName("user").setDescription("Выбрать пользователя")).setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("info").setDescription("Получить личное дело и карточку заявки игрока").addUserOption(opt => opt.setName("user").setDescription("Выбрать пользователя").setRequired(true)).setDefaultMemberPermissions(0),
         new SlashCommandBuilder()
@@ -2990,6 +2991,58 @@ Main состав — основа нашей семьи. Здесь играю�
 
                 await channel.send({ embeds: [embed], components: [row] });
                 await i.reply({ content: "✅ Панель заявки в Main успешно создана!", flags: MessageFlags.Ephemeral });
+                return;
+            }
+
+            // =====================================================
+            // ИНФОРМАЦИОННАЯ ПАНЕЛЬ MAJESTIC RP
+            // =====================================================
+            if (i.commandName === "info_panel") {
+                await i.deferReply({ flags: MessageFlags.Ephemeral });
+
+                const infoContainer = new ContainerBuilder()
+                    .setAccentColor(0x8B0000)
+                    .addMediaGalleryComponents(
+                        new MediaGalleryBuilder().addItems(
+                            new MediaGalleryItemBuilder().setURL("attachment://info-banner.png")
+                        )
+                    )
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(
+`# MAJESTIC RP
+
+Полезные ресурсы сервера и семьи собраны в одном месте. Нажимай на ссылки, чтобы открыть нужный ресурс.`
+                        )
+                    )
+                    .addSeparatorComponents(new SeparatorBuilder())
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(
+`## Majestic RP
+
+**Новости и обновления:** [Change-log Шизы Флетчера](https://t.me/loganfletcher)
+**Таблицы, гайды и карты:** [Fletcher Wiki](https://fletcher-wiki.com/)
+**Дополнительные таблицы и карты:** [Telegram Fletcher](https://t.me/fletchergta5)
+
+**Сообщества проекта:**
+[Marketplace Discord](https://discord.gg/majesticmarketplace) · [Marketplace MTA](https://discord.gg/VBVEDKyzbs) · [Majestic Racing](https://discord.gg/wkCba7WJ6R) · [Majestic Families](https://discord.gg/9hjcSfjMhk)`
+                        )
+                    )
+                    .addSeparatorComponents(new SeparatorBuilder())
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(
+`## HIKARU FAMILY
+
+**Семейные новости:** [Telegram](https://t.me/+yiuXhlOpH-YyMTMy)
+**Семейный чат:** [Telegram](https://t.me/+9UDpEerjcUtmZmY6) · [VK](https://vk.me/join/uTd4kB_NcxziuXuPROB8s5dgY26iUOP7/6U=)`
+                        )
+                    );
+
+                await i.channel.send({
+                    components: [infoContainer],
+                    flags: MessageFlags.IsComponentsV2,
+                    files: [createBannerAttachment("info-banner.png")]
+                });
+                await i.editReply({ content: "✅ Информационная панель Majestic RP отправлена." });
                 return;
             }
 
