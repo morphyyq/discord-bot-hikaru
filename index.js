@@ -87,12 +87,22 @@ client.on(Events.Error, (error) => {
 // CONFIGURATION: MAJESTIC RP FAMILY SERVER
 // =====================================================
 const TARGET_GUILD_ID = "1115707156835074208";
+const CAPTURE_BLACKLIST_ROLE_IDS = ["1574495846203002890", "1574495996396707963"];
 
 function getApplicationManagerRoles(config) {
     return [...new Set([
         ...(config?.ALLOWED_ROLES || []),
         ...(config?.FAMILY_APPLICATION_ROLES || [])
     ])];
+}
+
+function getCaptureManagerRoles(config) {
+    return config?.CAPTURE_CHIEF_ROLE_ID ? [config.CAPTURE_CHIEF_ROLE_ID] : [];
+}
+
+function isCaptureApplicationChannel(channel) {
+    const name = String(channel?.name || "");
+    return name.startsWith("capture-") || name.startsWith("captur-") || name.startsWith("blacklist-");
 }
 
 async function syncApplicationManagerAccess(guild) {
@@ -103,12 +113,20 @@ async function syncApplicationManagerAccess(guild) {
     for (const channel of guild.channels.cache.values()) {
         if (!channel?.parentId || !categoryIds.has(channel.parentId)) continue;
         if (channel.type !== ChannelType.GuildText) continue;
-        for (const roleId of managerRoles) {
+        const rolesForChannel = isCaptureApplicationChannel(channel)
+            ? getCaptureManagerRoles(config)
+            : managerRoles;
+        for (const roleId of rolesForChannel) {
             await channel.permissionOverwrites.edit(roleId, {
                 ViewChannel: true,
                 SendMessages: true,
                 ReadMessageHistory: true
             }).catch(() => null);
+        }
+        if (isCaptureApplicationChannel(channel)) {
+            for (const roleId of config.FAMILY_APPLICATION_ROLES || []) {
+                await channel.permissionOverwrites.delete(roleId).catch(() => null);
+            }
         }
     }
 }
@@ -152,6 +170,7 @@ const SERVERS = {
             "1575167053034168451",
             "1575167120856055939"
         ],
+        CAPTURE_CHIEF_ROLE_ID: "1349471979954114580",
         // Общая роль участника после принятия в семью
         ACADEMY_ROLES: ["1329516982797865041", "1125662483126943794"],
         // Каптур: общая роль плюс текущий ранг C
@@ -304,7 +323,8 @@ const APP_TYPE_TITLES = {
     recruit: "Заявление — Recruit",
     academy: "Заявление",
     capture: "Заявление",
-    capture_special: "Заявление — Каптур-состав"
+    capture_special: "Заявление — Каптур-состав",
+    capture_blacklist: "Заявление — Снятие ЧС каптов"
 };
 
 const APP_STATUS_COLOR = {
@@ -347,6 +367,14 @@ function buildAppBodyText(type, data) {
         return [
             appAnswerBox("Ваш ник", data.q1),
             appAnswerBox("Откат с ГГ и каптов", data.q2)
+        ].join("\n\n");
+    }
+
+    if (type === "capture_blacklist") {
+        return [
+            appAnswerBox("Ваш ник", data.q1),
+            appAnswerBox("Причина занесения в ЧС", data.q2),
+            appAnswerBox("Оправдания", data.q3)
         ].join("\n\n");
     }
 
@@ -504,6 +532,7 @@ function appTypeFromChannelName(name) {
     if (name.startsWith("recruit")) return "recruit";
     if (name.startsWith("academy")) return "academy";
     if (name.startsWith("captur-")) return "capture_special";
+    if (name.startsWith("blacklist-")) return "capture_blacklist";
     return "capture";
 }
 
@@ -2623,8 +2652,10 @@ client.on(Events.InteractionCreate, async (i) => {
 
                 try {
                     const message = await i.channel.send({
+                        content: "@everyone",
                         components: [buildPlusContainer(event)],
-                        flags: MessageFlags.IsComponentsV2
+                        flags: MessageFlags.IsComponentsV2,
+                        allowedMentions: { parse: ["everyone"] }
                     });
                     event.messageId = message.id;
                     await i.reply({ content: `✅ Сбор плюсов создан: ${message.url}`, flags: MessageFlags.Ephemeral });
@@ -3048,25 +3079,32 @@ Main состав — основа нашей семьи. Здесь играю�
                 const capturePanel = new ContainerBuilder()
                     .setAccentColor(0x8B0000)
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-`## 🛡️ Заявка в каптур-состав
+`## 🛡️ Заявки Capture отдела
 
-Заполни форму и приложи доказательства. После проверки администратор выберет тир C, B или A.`
+Выбери нужный тип обращения в меню ниже. Заявки рассматривает только **чиф Capture**.`
                     ))
                     .addSeparatorComponents(new SeparatorBuilder())
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-`**Поля заявки:**
-• Ваш ник
-• Откат с ГГ и каптов`
-                    ))
                     .addActionRowComponents(new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId("open_capture_application_modal")
-                            .setLabel("Подать заявку")
-                            .setEmoji("🛡️")
-                            .setStyle(ButtonStyle.Danger)
+                        new StringSelectMenuBuilder()
+                            .setCustomId("capture_department_apply_menu")
+                            .setPlaceholder("Выберите тип заявки")
+                            .addOptions(
+                                {
+                                    label: "Податься в Capture-состав",
+                                    description: "Никнейм и откат с каптов/ГГ",
+                                    value: "capture_join",
+                                    emoji: "🛡️"
+                                },
+                                {
+                                    label: "Снятие ЧС каптов",
+                                    description: "Подать заявку на снятие блокировки",
+                                    value: "capture_blacklist_remove",
+                                    emoji: "🔓"
+                                }
+                            )
                     ));
                 await i.channel.send({ components: [capturePanel], flags: MessageFlags.IsComponentsV2 });
-                await i.editReply({ content: "✅ Панель заявки в каптур-состав отправлена." });
+                await i.editReply({ content: "✅ Панель заявок Capture отдела отправлена." });
                 return;
             }
 
@@ -5770,6 +5808,11 @@ Main состав — основа нашей семьи. Здесь играю�
             }
 
             const userId = i.user.id;
+            const blockedFromPlus = CAPTURE_BLACKLIST_ROLE_IDS.some(roleId => i.member?.roles?.cache?.has(roleId));
+            if ((action === "join" || action === "extra") && blockedFromPlus) {
+                await i.reply({ content: "❌ Вы не можете вступать в сборы плюсов, так как находитесь в ЧС каптов.", flags: MessageFlags.Ephemeral });
+                return;
+            }
             const inRegular = event.participants.has(userId);
             const inExtra = event.extraParticipants.has(userId);
             const occupied = plusTotalSlots(event);
@@ -5824,14 +5867,25 @@ Main состав — основа нашей семьи. Здесь играю�
             return;
         }
 
-        if (i.isButton() && i.customId === "open_capture_application_modal") {
+        if (
+            (i.isButton() && i.customId === "open_capture_application_modal") ||
+            (i.isStringSelectMenu() && i.customId === "capture_department_apply_menu")
+        ) {
+            const type = i.isStringSelectMenu() ? i.values[0] : "capture_join";
+            const isBlacklist = type === "capture_blacklist_remove";
             const modal = new ModalBuilder()
-                .setCustomId("capture_application_modal")
-                .setTitle("Заявка в каптур-состав");
-            const fields = [
-                { id: "q1", label: "Ваш ник", placeholder: "Hikaru | 21074", style: TextInputStyle.Short },
-                { id: "q2", label: "Откат с ГГ и каптов", placeholder: "Ссылка или ссылки на откат с ГГ и каптов", style: TextInputStyle.Paragraph }
-            ];
+                .setCustomId(`capture_department_modal_${isBlacklist ? "blacklist" : "join"}`)
+                .setTitle(isBlacklist ? "Снятие ЧС каптов" : "Заявка в Capture-состав");
+            const fields = isBlacklist
+                ? [
+                    { id: "q1", label: "Ваш никнейм", placeholder: "Hikaru | 21074", style: TextInputStyle.Short },
+                    { id: "q2", label: "Причина занесения в ЧС", placeholder: "Укажите причину", style: TextInputStyle.Paragraph },
+                    { id: "q3", label: "Оправдания", placeholder: "Почему ЧС нужно снять", style: TextInputStyle.Paragraph }
+                ]
+                : [
+                    { id: "q1", label: "Никнейм в игре", placeholder: "Hikaru | 21074", style: TextInputStyle.Short },
+                    { id: "q2", label: "Откат с каптов/ГГ", placeholder: "Ссылка или ссылки на откат", style: TextInputStyle.Paragraph }
+                ];
             modal.addComponents(...fields.map(f => new ActionRowBuilder().addComponents(
                 new TextInputBuilder().setCustomId(f.id).setLabel(f.label).setPlaceholder(f.placeholder).setRequired(true).setStyle(f.style)
             )));
@@ -5912,6 +5966,56 @@ Main состав — основа нашей семьи. Здесь играю�
             return;
         }
 
+        if (i.isModalSubmit() && i.customId.startsWith("capture_department_modal_")) {
+            await i.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
+            const isBlacklist = i.customId.endsWith("_blacklist");
+            const appType = isBlacklist ? "capture_blacklist" : "capture_special";
+            const prefix = isBlacklist ? "blacklist" : "captur";
+            const expectedChannelName = `${prefix}-${i.user.username}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
+            const targetCategory = config.CHANNELS.CATEGORY;
+            await i.guild.channels.fetch().catch(() => null);
+            const existingChannel = i.guild.channels.cache.find(c => c.parentId === targetCategory && c.name === expectedChannelName);
+            if (existingChannel) {
+                await i.editReply({ content: `⚠️ Ваша заявка уже создана: <#${existingChannel.id}>` }).catch(() => null);
+                return;
+            }
+            const data = {
+                type: appType,
+                q1: i.fields.getTextInputValue("q1"),
+                q2: i.fields.getTextInputValue("q2"),
+                q3: isBlacklist ? i.fields.getTextInputValue("q3") : null,
+                q4: null,
+                q5: null,
+                userId: i.user.id
+            };
+            applications.set(i.user.id, data);
+            const channel = await i.guild.channels.create({
+                name: expectedChannelName,
+                type: ChannelType.GuildText,
+                parent: targetCategory,
+                permissionOverwrites: [
+                    { id: i.guild.id, deny: ["ViewChannel"] },
+                    { id: i.user.id, allow: ["ViewChannel", "SendMessages"] },
+                    ...getCaptureManagerRoles(config).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] }))
+                ]
+            });
+            await channel.send({
+                components: [buildAppContainer({
+                    type: appType,
+                    data,
+                    targetId: i.user.id,
+                    username: i.user.username,
+                    statusText: "Ожидает рассмотрения",
+                    statusKey: "pending",
+                    buttonsRow: buildAppButtonsRow(i.user.id)
+                })],
+                flags: MessageFlags.IsComponentsV2
+            });
+            await i.editReply({ content: `✅ Заявка создана! Канал: <#${channel.id}>` }).catch(() => null);
+            await sendApplicationAudit(i.guild, { status: "Подана", data, type: appType, targetId: i.user.id, username: i.user.username, channelId: channel.id });
+            return;
+        }
+
         if (i.isModalSubmit() && i.customId === "capture_application_modal") {
             await i.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
             if (modalLocks.has(i.user.id)) {
@@ -5945,7 +6049,7 @@ Main состав — основа нашей семьи. Здесь играю�
                 permissionOverwrites: [
                     { id: i.guild.id, deny: ["ViewChannel"] },
                     { id: i.user.id, allow: ["ViewChannel", "SendMessages"] },
-                    ...getApplicationManagerRoles(config).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages"] }))
+                    ...getCaptureManagerRoles(config).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] }))
                 ]
             });
             await channel.send({
@@ -6011,7 +6115,7 @@ Main состав — основа нашей семьи. Здесь играю�
                 permissionOverwrites: [
                     { id: i.guild.id, deny: ["ViewChannel"] },
                     { id: i.user.id, allow: ["ViewChannel", "SendMessages"] },
-                    ...getApplicationManagerRoles(config).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages"] })),
+                    ...(type === "capture" ? getCaptureManagerRoles(config) : getApplicationManagerRoles(config)).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] })),
                     
                 ]
             });
@@ -6204,7 +6308,7 @@ ${data.q5}
 
         if (i.isStringSelectMenu() && i.customId.startsWith("capture_tier_select_")) {
             const adminMember = await i.guild.members.fetch(i.user.id).catch(() => null);
-            const isAdmin = adminMember && getApplicationManagerRoles(config).some(role => adminMember.roles.cache.has(role));
+            const isAdmin = adminMember && adminMember.roles.cache.has(config.CAPTURE_CHIEF_ROLE_ID);
             if (!isAdmin) {
                 await i.reply({ content: "❌ Вы не можете выбрать тир для заявки.", flags: MessageFlags.Ephemeral }).catch(() => null);
                 return;
@@ -6297,8 +6401,9 @@ ${data.q5}
                 }
             }
 
+            const captureTicket = isCaptureApplicationChannel(i.channel);
             const allowedButtonRoles = parts[0] === "app"
-                ? getApplicationManagerRoles(config)
+                ? (captureTicket ? getCaptureManagerRoles(config) : getApplicationManagerRoles(config))
                 : (config.ALLOWED_ROLES || []);
             const hasPermission = allowedButtonRoles.some(role => member.roles.cache.has(role));
             if (!hasPermission) {
@@ -6335,10 +6440,28 @@ ${data.q5}
                 const appData = applications.get(targetId);
                 const appType = appData?.type || appTypeFromChannelName(i.channel.name);
                 const appUsername = targetMember?.user?.username || targetId;
+                const currentReviewer = ticketReviewers.get(i.channel.id);
+                if (captureTicket && currentReviewer && currentReviewer.id !== i.user.id && action !== "review") {
+                    await i.reply({ content: `❌ Эту Capture-заявку уже рассматривает <@${currentReviewer.id}>.`, flags: MessageFlags.Ephemeral }).catch(() => null);
+                    return;
+                }
 
                 if (action === "accept") {
-                    const specialCapture = appData?.type === "capture_special" || i.channel.name.startsWith("captur-");
+                    const specialCapture = appData?.type === "capture_special" || appData?.type === "capture_blacklist" || captureTicket;
                     if (specialCapture) {
+                        if (appData?.type === "capture_blacklist") {
+                            if (targetMember) {
+                                await targetMember.roles.remove(CAPTURE_BLACKLIST_ROLE_IDS).catch(() => null);
+                            }
+                            await sendApplicationAudit(i.guild, { status: "Принята", data: appData || {}, type: "capture_blacklist", targetId, username: appUsername, channelId: i.channel.id, actorId: i.user.id });
+                            const acceptedContainer = buildAppContainer({ type: "capture_blacklist", data: appData || {}, targetId, username: appUsername, statusText: "ЧС каптов снят", statusKey: "accepted", reviewerId: i.user.id });
+                            await i.update({ components: [acceptedContainer], flags: MessageFlags.IsComponentsV2 }).catch(() => null);
+                            await targetMember?.send("✅ Заявка на снятие ЧС каптов одобрена. Ограничения сняты.").catch(() => null);
+                            ticketReviewers.delete(i.channel.id);
+                            applications.delete(targetId);
+                            setTimeout(() => i.channel.delete().catch(() => null), 5000);
+                            return;
+                        }
                         const tierMenu = new StringSelectMenuBuilder()
                             .setCustomId(`capture_tier_select_${targetId}`)
                             .setPlaceholder("Выберите тир для выдачи")
@@ -6600,7 +6723,8 @@ const PORTFOLIO_ADMIN_TOPIC_PREFIX = "darkness-portfolio-admin:";
 const PORTFOLIO_THREAD_DEFS = [
     { name: "CAPT & MCL", description: "результаты, материалы и откаты CAPT и MCL." },
     { name: "РП контент", description: "РП отчёты, ГГ, разгон, грин и другие игровые активности." },
-    { name: "Уведомления", description: "заявки, решения, покупки, коины и выговоры." }
+    { name: "Уведомления", description: "заявки, решения, покупки, коины и выговоры." },
+    { name: "Чат", description: "общение владельца портфеля с чекерами." }
 ];
 const PORTFOLIO_CATEGORY_NAME = "Портфели";
 const PORTFOLIO_ARCHIVE_CATEGORY_NAME = "Архив портфелей";
@@ -6815,7 +6939,7 @@ async function createPrivatePortfolioChannel(member, topicPrefix = PORTFOLIO_TOP
 
     const permissionOverwrites = [
         { id: guild.id, deny: ["ViewChannel"] },
-        { id: member.id, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory", "AttachFiles"] },
+        { id: member.id, allow: ["ViewChannel", "ReadMessageHistory", "AttachFiles"] },
         { id: PERSONAL_REPORT_VIEW_ROLE_ID, allow: ["ViewChannel", "ReadMessageHistory"] },
         { id: PERSONAL_REPORT_HIGH_RANK_ROLE_ID, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] },
         { id: client.user.id, allow: ["ViewChannel", "SendMessages", "SendMessagesInThreads", "ReadMessageHistory", "CreatePrivateThreads", "ManageThreads", "ManageChannels", "ManageMessages"] }
@@ -6875,7 +6999,7 @@ async function ensurePrivatePortfolioChannel(member, { createIfMissing = true } 
     if (created || isArchived) {
         await channel.permissionOverwrites.edit(member.id, {
             ViewChannel: true,
-            SendMessages: true,
+            SendMessages: false,
             ReadMessageHistory: true,
             AttachFiles: true
         }).catch(() => null);
@@ -6954,7 +7078,8 @@ function buildPortfolioInfoPayload(member) {
             "📚 **Разделы портфолио:**\n" +
             "> 🗡️ **CAPT & MCL** — результаты, материалы и откаты CAPT и MCL.\n" +
             "> 📝 **РП контент** — РП отчёты, ГГ, разгон, грин и другие игровые активности.\n" +
-            "> 📢 **Уведомления** — заявки, решения, покупки, коины и выговоры."
+            "> 📢 **Уведомления** — заявки, решения, покупки, коины и выговоры.\n" +
+            "> 💬 **Чат** — общение владельца портфеля с чекерами."
         ))
         .addSeparatorComponents(new SeparatorBuilder())
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(
@@ -7351,6 +7476,23 @@ async function ensurePortfolioThreads(member, portfolioChannel) {
 
         if (thread) {
             if (thread.archived) await thread.setArchived(false).catch(() => null);
+            if (definition.name === "Чат") {
+                await thread.permissionOverwrites.edit(member.id, {
+                    ViewChannel: true,
+                    SendMessages: true,
+                    ReadMessageHistory: true
+                }).catch(() => null);
+                await thread.permissionOverwrites.edit(PERSONAL_REPORT_VIEW_ROLE_ID, {
+                    ViewChannel: true,
+                    SendMessages: true,
+                    ReadMessageHistory: true
+                }).catch(() => null);
+                await thread.permissionOverwrites.edit(PERSONAL_REPORT_HIGH_RANK_ROLE_ID, {
+                    ViewChannel: true,
+                    SendMessages: true,
+                    ReadMessageHistory: true
+                }).catch(() => null);
+            }
             result.push(thread);
         }
     }
