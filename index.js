@@ -88,6 +88,31 @@ client.on(Events.Error, (error) => {
 // =====================================================
 const TARGET_GUILD_ID = "1115707156835074208";
 
+function getApplicationManagerRoles(config) {
+    return [...new Set([
+        ...(config?.ALLOWED_ROLES || []),
+        ...(config?.FAMILY_APPLICATION_ROLES || [])
+    ])];
+}
+
+async function syncApplicationManagerAccess(guild) {
+    const config = SERVERS[guild.id];
+    if (!config) return;
+    const categoryIds = new Set([config.CHANNELS.CATEGORY, config.CHANNELS.RECRUIT_CATEGORY].filter(Boolean));
+    const managerRoles = getApplicationManagerRoles(config);
+    for (const channel of guild.channels.cache.values()) {
+        if (!channel?.parentId || !categoryIds.has(channel.parentId)) continue;
+        if (channel.type !== ChannelType.GuildText) continue;
+        for (const roleId of managerRoles) {
+            await channel.permissionOverwrites.edit(roleId, {
+                ViewChannel: true,
+                SendMessages: true,
+                ReadMessageHistory: true
+            }).catch(() => null);
+        }
+    }
+}
+
 const SERVERS = {
     [TARGET_GUILD_ID]: {
         CHANNELS: {
@@ -122,6 +147,10 @@ const SERVERS = {
             "1115723252891930735",
             "1115721017516625920",
             "1115720822171123842"
+        ],
+        FAMILY_APPLICATION_ROLES: [
+            "1575167053034168451",
+            "1575167120856055939"
         ],
         // Общая роль участника после принятия в семью
         ACADEMY_ROLES: ["1329516982797865041", "1125662483126943794"],
@@ -1448,6 +1477,7 @@ client.once(Events.ClientReady, async () => {
 
     const mainGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
     if (mainGuild) {
+        await syncApplicationManagerAccess(mainGuild);
         await updateOnlineMonitor();
         await updateAFKEmbed(mainGuild);
         // Создаём панель войс-комнат до долгой синхронизации портфелей.
@@ -5915,7 +5945,7 @@ Main состав — основа нашей семьи. Здесь играю�
                 permissionOverwrites: [
                     { id: i.guild.id, deny: ["ViewChannel"] },
                     { id: i.user.id, allow: ["ViewChannel", "SendMessages"] },
-                    ...(config.ALLOWED_ROLES || []).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages"] }))
+                    ...getApplicationManagerRoles(config).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages"] }))
                 ]
             });
             await channel.send({
@@ -5981,7 +6011,7 @@ Main состав — основа нашей семьи. Здесь играю�
                 permissionOverwrites: [
                     { id: i.guild.id, deny: ["ViewChannel"] },
                     { id: i.user.id, allow: ["ViewChannel", "SendMessages"] },
-                    ...(config.ALLOWED_ROLES ? config.ALLOWED_ROLES.map(role => ({ id: role, allow: ["ViewChannel", "SendMessages"] })) : []),
+                    ...getApplicationManagerRoles(config).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages"] })),
                     
                 ]
             });
@@ -6174,7 +6204,7 @@ ${data.q5}
 
         if (i.isStringSelectMenu() && i.customId.startsWith("capture_tier_select_")) {
             const adminMember = await i.guild.members.fetch(i.user.id).catch(() => null);
-            const isAdmin = adminMember && (config.ALLOWED_ROLES || []).some(role => adminMember.roles.cache.has(role));
+            const isAdmin = adminMember && getApplicationManagerRoles(config).some(role => adminMember.roles.cache.has(role));
             if (!isAdmin) {
                 await i.reply({ content: "❌ Вы не можете выбрать тир для заявки.", flags: MessageFlags.Ephemeral }).catch(() => null);
                 return;
