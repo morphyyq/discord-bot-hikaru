@@ -317,7 +317,7 @@ function buildAppBodyText(type, data) {
         appAnswerBox("Ваш статический ID и ваш никнейм", data.q1),
         appAnswerBox("Имя и возраст (в реале)", data.q2),
         appAnswerBox("Есть ли опыт в семьях? Где состояли?", data.q3),
-        appAnswerBox("Почему выбрали Darkness? Как узнали о нас?", data.q4)
+        appAnswerBox("Почему выбрали Hikaru? Как узнали о нас?", data.q4)
     ];
     if (type !== "academy" && data.q5) {
         fields.push(appAnswerBox("Предоставьте свои откаты", data.q5));
@@ -1251,8 +1251,8 @@ client.on(Events.GuildMemberAdd, async (member) => {
         if (false && member.guild.id === TARGET_GUILD_ID) {
             const darknessGuild = await client.guilds.fetch(TARGET_GUILD_ID).catch(() => null);
             if (darknessGuild) {
-                const isMemberOfDarkness = await darknessGuild.members.fetch(member.id).catch(() => null);
-                if (isMemberOfDarkness) {
+                const isMemberOfHikaru = await darknessGuild.members.fetch(member.id).catch(() => null);
+                if (isMemberOfHikaru) {
                     await member.roles.add("1504470450305241288").catch(() => null);
                 }
             }
@@ -2699,7 +2699,7 @@ client.on(Events.InteractionCreate, async (i) => {
 # СИСТЕМА ПОВЫШЕНИЯ
 **•  1 → 2 РАНГ**
 <:df:1575184921293488229> 50 PR + фамилия • 3+ дня в семье,
-<:df:1575184921293488229> Фамилия \`Darkness\`
+<:df:1575184921293488229> Фамилия \`Hikaru\`
 
 **•  2 → 3 РАНГ**
 <:df:1575184921293488229> 100 PR • 14+ дней в семье
@@ -2849,7 +2849,7 @@ client.on(Events.InteractionCreate, async (i) => {
                     if (targetMember.roles.cache.has("1513647909965533377")) currentRankName = "TEST [1 Rank]";
                     else if (targetMember.roles.cache.has("1458485405769797848")) currentRankName = "Academy [2 Rank]";
                     else if (targetMember.roles.cache.has("1458485351424331903")) currentRankName = "Young [3 Rank]";
-                    else if (targetMember.roles.cache.has("1458485277495656553")) currentRankName = "Darkness [4 Rank]";
+                    else if (targetMember.roles.cache.has("1458485277495656553")) currentRankName = "Hikaru [4 Rank]";
                 }
 
                 const rankEmbed = new EmbedBuilder()
@@ -2979,7 +2979,7 @@ Main состав — основа нашей семьи. Здесь играю�
 • Подгонять администрацию запрещено
 • Если заявка отклонена — решение окончательное
 
-**Вступая в Main состав, вы становитесь частью основного комьюнити Darkness и участвуете во всём семейном контенте.**`
+**Вступая в Main состав, вы становитесь частью основного комьюнити Hikaru и участвуете во всём семейном контенте.**`
                     );
 
                 const row = new ActionRowBuilder().addComponents(
@@ -3074,7 +3074,7 @@ Main состав — основа нашей семьи. Здесь играю�
                         )
                     )
                     .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent("# Отдел recruit\n-# Darkness Family · набор в команду")
+                        new TextDisplayBuilder().setContent("# Отдел recruit\n-# Hikaru Family · набор в команду")
                     )
                     .addSeparatorComponents(new SeparatorBuilder())
                     .addTextDisplayComponents(
@@ -3084,7 +3084,7 @@ Main состав — основа нашей семьи. Здесь играю�
 ### Что делает отдел
 • ищет и приглашает новых игроков;
 • помогает новичкам освоиться в семье;
-• поддерживает актив и атмосферу Darkness.
+• поддерживает актив и атмосферу Hikaru.
 
 ### Важно
 • отвечайте на вопросы честно и подробно;
@@ -3112,7 +3112,7 @@ Main состав — основа нашей семьи. Здесь играю�
 ### 📝 TEST ➔ 🧬 ACADEMY ###
 **Требования:**
 • 5 МП
-• Фамилия Darkness
+• Фамилия Hikaru
 • Знание правил семьи и сервера
 • Актив в игре больше 3 часов в день
 
@@ -3123,14 +3123,14 @@ Main состав — основа нашей семьи. Здесь играю�
 • Грамотная и адекватная игра
 • Отсутствие серьёзных нарушений, варнов, жалоб со стороны софракцевцев, софамцев
 
-### 🍸 YOUNG ➔ 🟣 DARKNESS ###
+### 🍸 YOUNG ➔ 🟣 HIKARU ###
 **Требования:**
 • 20 МП суммарно
 • Стабильный онлайн (больше 100 часов in игре)
 • Помощь семье
 • Хорошая коммуникация
 
-### 🟣 DARKNESS ➔ 👑 RECRUIT ###
+### 🟣 HIKARU ➔ 👑 RECRUIT ###
 **Требования:**
 • Уметь грамотно общаться
 • Стабильный онлайн (3+ часа в день)
@@ -3242,7 +3242,7 @@ Main состав — основа нашей семьи. Здесь играю�
                         "**Функционал:**\n" +
                         "• Выбор типа мероприятия\n" +
                         "• Ручная панель с кнопками отправки в канал и ЛС\n\n" +
-                        "**Darkness & Ballas Central Control**"
+                        "**Hikaru & Ballas Central Control**"
                     )
                     .setColor("#2b2d31");
 
@@ -3254,7 +3254,7 @@ Main состав — основа нашей семьи. Здесь играю�
                         .setEmoji("🍇"),
                     new ButtonBuilder()
                         .setCustomId("group_start_darkness")
-                        .setLabel("Darkness Family")
+                        .setLabel("Hikaru Family")
                         .setStyle(ButtonStyle.Primary)
                         .setEmoji("🌑")
                 );
@@ -5267,7 +5267,7 @@ Main состав — основа нашей семьи. Здесь играю�
                     } else if (targetMember.roles.cache.has("1458485405769797848") && currentCount >= 10) {
                         triggerPromo = true; fromRankName = "Academy"; toRankName = "Young"; removeRoleId = "1458485405769797848"; addRoleId = "1458485351424331903";
                     } else if (targetMember.roles.cache.has("1458485351424331903") && currentCount >= 20) {
-                        triggerPromo = true; fromRankName = "Young"; toRankName = "Darkness"; removeRoleId = "1458485351424331903"; addRoleId = "1458485277495656553";
+                        triggerPromo = true; fromRankName = "Young"; toRankName = "Hikaru"; removeRoleId = "1458485351424331903"; addRoleId = "1458485277495656553";
                     }
                 }
 
@@ -5778,7 +5778,7 @@ Main состав — основа нашей семьи. Здесь играю�
                 .setTitle("Заявка в Recruit");
 
             const fields = [
-                { id: "q1", label: "Ваш ник и статик", placeholder: "Hugo Darkness | 21074", style: TextInputStyle.Short },
+                { id: "q1", label: "Ваш ник и статик", placeholder: "Hugo Hikaru | 21074", style: TextInputStyle.Short },
                 { id: "q2", label: "Имя и возраст (в реале)", placeholder: "Женя | 20", style: TextInputStyle.Short },
                 { id: "q3", label: "Почему хотите попасть в Recruit?", placeholder: "Хочу помогать семье, набирать новых игроков...", style: TextInputStyle.Paragraph },
                 { id: "q4", label: "Есть ли опыт в рекрутинге или схожих ролях?", placeholder: "Да, был рекрутером в семье... / Нет, но готов учиться", style: TextInputStyle.Paragraph }
@@ -5801,10 +5801,10 @@ Main состав — основа нашей семьи. Здесь играю�
                 .setTitle(type === "academy" ? "Заявка в Academy" : type === "main" ? "Заявка в Main" : "Заявка в Capture");
 
             const fields = [
-                { id: "q1", label: "ВАШ СТАТИЧЕСКИЙ ID # И ВАШ НИК НЕЙМ", placeholder: "21074 | Hugo Darkness", style: TextInputStyle.Short },
+                { id: "q1", label: "ВАШ СТАТИЧЕСКИЙ ID # И ВАШ НИК НЕЙМ", placeholder: "21074 | Hugo Hikaru", style: TextInputStyle.Short },
                 { id: "q2", label: "ИМЯ И ВОЗРАСТ (В РЕАЛЕ)", placeholder: "Женя | 20", style: TextInputStyle.Short },
                 { id: "q3", label: "ЕСТЬ У ВАС ОПЫТ В СЕМЬЯХ? ГДЕ СОСТОЯЛИ?", placeholder: "Да, был в...", style: TextInputStyle.Paragraph },
-                { id: "q4", label: "ПОЧЕМУ ВЫБРАЛИ Darkness? КАК УЗНАЛИ О НАС?", placeholder: "Увидел на респе / медиа контент...", style: TextInputStyle.Paragraph }
+                { id: "q4", label: "ПОЧЕМУ ВЫБРАЛИ Hikaru? КАК УЗНАЛИ О НАС?", placeholder: "Увидел на респе / медиа контент...", style: TextInputStyle.Paragraph }
             ];
 
             if (type !== "academy") {
@@ -6048,7 +6048,7 @@ ${data.q5}
             const targetMember = await i.guild.members.fetch(targetId).catch(() => null);
             if (targetMember) {
                 await targetMember.send({
-                    content: `🔔 **Привет!** Твоя заявка в семью **Darkness** на сервере **${i.guild.name}** была проверена.\n\nТебя вызвали на обзвон! Пожалуйста, подключись к голосовой канале по прямой ссылке:\n${voiceUrl}`
+                    content: `🔔 **Привет!** Твоя заявка в семью **Hikaru** на сервере **${i.guild.name}** была проверена.\n\nТебя вызвали на обзвон! Пожалуйста, подключись к голосовой канале по прямой ссылке:\n${voiceUrl}`
                 }).catch(() => {
                     i.channel.send(`⚠️ <@${targetId}>, бот не смог написать вам в ЛС, так как у вас закрыты личные сообщения!`).catch(() => null);
                 });
@@ -6250,8 +6250,8 @@ ${data.q5}
 
                     if (isMain || isRecruit) {
                         const dmText = isRecruit
-                            ? `👋 **Привет!** Твоя заявка в **отдел Recruit** Darkness на сервере **${i.guild.name}** была проверена.\n\n🎉 Поздравляем, ты успешно принят в Recruit!`
-                            : `👋 **Привет!** Твоя заявка в **Main состав** Darkness на сервере **${i.guild.name}** была проверена.\n\n🎉 Поздравляем, кандидат успешно принят в Main состав!`;
+                            ? `👋 **Привет!** Твоя заявка в **отдел Recruit** Hikaru на сервере **${i.guild.name}** была проверена.\n\n🎉 Поздравляем, ты успешно принят в Recruit!`
+                            : `👋 **Привет!** Твоя заявка в **Main состав** Hikaru на сервере **${i.guild.name}** была проверена.\n\n🎉 Поздравляем, кандидат успешно принят в Main состав!`;
                         await targetMember.send({ content: dmText }).catch(() => {
                             i.channel.send(`⚠️ <@${targetId}>, бот не смог написать вам в ЛС, так как у вас закрыты личные сообщения!`).catch(() => null);
                         });
