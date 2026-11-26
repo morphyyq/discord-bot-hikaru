@@ -7209,7 +7209,9 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
         const removedRoles = oldRoles.filter(role => !newRoles.has(role.id));
 
         if (addedRoles.has(PERSONAL_REPORT_ROLE_ID)) {
-            // Портфель создаётся только вручную кнопкой «Портфель».
+            // Возвращаем только уже существующий архивный портфель.
+            // Новый портфель автоматически не создаём, он создаётся кнопкой.
+            await ensurePrivatePortfolioChannel(newMember, { createIfMissing: false });
             await deletePersonalReportRoleLostNotice(newMember.guild, newMember.id);
         }
         if (removedRoles.has(PERSONAL_REPORT_ROLE_ID)) {
