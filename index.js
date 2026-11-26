@@ -3081,12 +3081,24 @@ Main состав — основа нашей семьи. Здесь играю�
                 await i.deferReply({ flags: MessageFlags.Ephemeral });
                 const capturePanel = new ContainerBuilder()
                     .setAccentColor(0x8B0000)
+                    .addMediaGalleryComponents(
+                        new MediaGalleryBuilder().addItems(
+                            new MediaGalleryItemBuilder().setURL("attachment://capture-banner.png")
+                        )
+                    )
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-`## 🛡️ Заявки Capture отдела
+`## 🛡️ Заявка в Capture-состав
 
-Выбери нужный тип обращения в меню ниже. Заявки рассматривает только **чиф Capture**.`
+Хочешь попасть в состав? Покажи свой никнейм и приложи качественный откат.
+
+**Важно:** заявку рассматривает только чиф Capture. Выбирай нужный пункт в меню ниже.`
                     ))
                     .addSeparatorComponents(new SeparatorBuilder())
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+`**Варианты обращения**
+• Податься в Capture-состав
+• Подать заявку на снятие ЧС каптов`
+                    ))
                     .addActionRowComponents(new ActionRowBuilder().addComponents(
                         new StringSelectMenuBuilder()
                             .setCustomId("capture_department_apply_menu")
@@ -3106,7 +3118,11 @@ Main состав — основа нашей семьи. Здесь играю�
                                 }
                             )
                     ));
-                await i.channel.send({ components: [capturePanel], flags: MessageFlags.IsComponentsV2 });
+                await i.channel.send({
+                    components: [capturePanel],
+                    flags: MessageFlags.IsComponentsV2,
+                    files: [createBannerAttachment("capture-banner.png")]
+                });
                 await i.editReply({ content: "✅ Панель заявок Capture отдела отправлена." });
                 return;
             }
