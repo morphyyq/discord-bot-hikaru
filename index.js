@@ -1438,6 +1438,10 @@ client.once(Events.ClientReady, async () => {
             .addUserOption(opt => opt.setName("user").setDescription("Игрок").setRequired(true))
             .addIntegerOption(opt => opt.setName("amount").setDescription("Кол-во баллов для начисления").setRequired(true).setMinValue(1))
             .setDefaultMemberPermissions(0),
+        new SlashCommandBuilder()
+            .setName("reset_mp_points")
+            .setDescription("Обнулить МП баллы всех пользователей")
+            .setDefaultMemberPermissions(0),
 
         // ПАНЕЛЬ ВЗАИМОДЕЙСТВИЯ
         new SlashCommandBuilder()
@@ -2813,6 +2817,28 @@ client.on(Events.InteractionCreate, async (i) => {
             // =====================================================
             // МП БАЛЛЫ
             // =====================================================
+            if (i.commandName === "reset_mp_points") {
+                const member = await i.guild.members.fetch(i.user.id).catch(() => null);
+                const allowed = member && (config.ALLOWED_ROLES || []).some(roleId => member.roles.cache.has(roleId));
+                if (!allowed) {
+                    await i.reply({ content: "❌ Только администраторы могут обнулять МП-баллы.", flags: MessageFlags.Ephemeral });
+                    return;
+                }
+
+                const usersCount = Object.keys(salary.mpPoints || {}).length;
+                const confirmRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId("reset_mp_points_confirm").setLabel("Обнулить баллы").setStyle(ButtonStyle.Danger),
+                    new ButtonBuilder().setCustomId("reset_mp_points_cancel").setLabel("Отмена").setStyle(ButtonStyle.Secondary)
+                );
+                await i.reply({
+                    content: `⚠️ Вы собираетесь обнулить МП-баллы у **${usersCount}** пользователей.
+История отчётов сохранится. Продолжить?`,
+                    components: [confirmRow],
+                    flags: MessageFlags.Ephemeral
+                });
+                return;
+            }
+
             if (i.commandName === "mp_deduct") {
                 const targetUser = i.options.getUser("user");
                 const amount = i.options.getInteger("amount");
@@ -3610,6 +3636,25 @@ Main состав — основа нашей семьи. Здесь играю�
             }
         } // end isChatInputCommand
 
+
+        if (i.isButton() && (i.customId === "reset_mp_points_confirm" || i.customId === "reset_mp_points_cancel")) {
+            const member = await i.guild.members.fetch(i.user.id).catch(() => null);
+            const allowed = member && (config.ALLOWED_ROLES || []).some(roleId => member.roles.cache.has(roleId));
+            if (!allowed) {
+                await i.reply({ content: "❌ Только администраторы могут обнулять МП-баллы.", flags: MessageFlags.Ephemeral }).catch(() => null);
+                return;
+            }
+            if (i.customId === "reset_mp_points_cancel") {
+                await i.update({ content: "❎ Очистка МП-баллов отменена.", components: [] });
+                return;
+            }
+
+            const usersCount = Object.keys(salary.mpPoints || {}).length;
+            salary.mpPoints = {};
+            await saveDB(salary);
+            await i.update({ content: `✅ МП-баллы обнулены у **${usersCount}** пользователей. История отчётов сохранена.`, components: [] });
+            return;
+        }
 
         // =====================================================
         // МП КНОПКА СТАРТ — выбор типа МПшки
