@@ -2651,9 +2651,12 @@ client.on(Events.InteractionCreate, async (i) => {
                 plusEvents.set(eventId, event);
 
                 try {
+                    const plusContainer = buildPlusContainer(event);
+                    plusContainer.addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent("@everyone")
+                    );
                     const message = await i.channel.send({
-                        content: "@everyone",
-                        components: [buildPlusContainer(event)],
+                        components: [plusContainer],
                         flags: MessageFlags.IsComponentsV2,
                         allowedMentions: { parse: ["everyone"] }
                     });
@@ -6803,7 +6806,8 @@ async function configurePortfolioCategory(category, type) {
     await category.permissionOverwrites.edit(category.guild.id, { ViewChannel: false }).catch(() => null);
     await category.permissionOverwrites.edit(PERSONAL_REPORT_VIEW_ROLE_ID, {
         ViewChannel: true,
-        ReadMessageHistory: true
+        ReadMessageHistory: true,
+        SendMessagesInThreads: true
     }).catch(() => null);
     await category.permissionOverwrites.edit(PERSONAL_REPORT_HIGH_RANK_ROLE_ID, {
         ViewChannel: true,
@@ -6855,7 +6859,7 @@ async function getAvailablePortfolioCategory(guild, type, requiredSlots = 1) {
         type: ChannelType.GuildCategory,
         permissionOverwrites: [
             { id: guild.id, deny: ["ViewChannel"] },
-            { id: PERSONAL_REPORT_VIEW_ROLE_ID, allow: ["ViewChannel", "ReadMessageHistory"] },
+            { id: PERSONAL_REPORT_VIEW_ROLE_ID, allow: ["ViewChannel", "ReadMessageHistory", "SendMessagesInThreads"] },
             { id: PERSONAL_REPORT_HIGH_RANK_ROLE_ID, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] },
             { id: client.user.id, allow: ["ViewChannel", "SendMessages", "SendMessagesInThreads", "ReadMessageHistory", "CreatePrivateThreads", "ManageThreads", "ManageChannels", "ManageMessages"] }
         ]
@@ -6939,8 +6943,8 @@ async function createPrivatePortfolioChannel(member, topicPrefix = PORTFOLIO_TOP
 
     const permissionOverwrites = [
         { id: guild.id, deny: ["ViewChannel"] },
-        { id: member.id, allow: ["ViewChannel", "ReadMessageHistory", "AttachFiles"] },
-        { id: PERSONAL_REPORT_VIEW_ROLE_ID, allow: ["ViewChannel", "ReadMessageHistory"] },
+        { id: member.id, allow: ["ViewChannel", "ReadMessageHistory", "AttachFiles", "SendMessagesInThreads"] },
+        { id: PERSONAL_REPORT_VIEW_ROLE_ID, allow: ["ViewChannel", "ReadMessageHistory", "SendMessagesInThreads"] },
         { id: PERSONAL_REPORT_HIGH_RANK_ROLE_ID, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] },
         { id: client.user.id, allow: ["ViewChannel", "SendMessages", "SendMessagesInThreads", "ReadMessageHistory", "CreatePrivateThreads", "ManageThreads", "ManageChannels", "ManageMessages"] }
     ];
@@ -7000,12 +7004,14 @@ async function ensurePrivatePortfolioChannel(member, { createIfMissing = true } 
         await channel.permissionOverwrites.edit(member.id, {
             ViewChannel: true,
             SendMessages: false,
+            SendMessagesInThreads: true,
             ReadMessageHistory: true,
             AttachFiles: true
         }).catch(() => null);
         await channel.permissionOverwrites.edit(PERSONAL_REPORT_VIEW_ROLE_ID, {
             ViewChannel: true,
-            ReadMessageHistory: true
+            ReadMessageHistory: true,
+            SendMessagesInThreads: true
         }).catch(() => null);
         await channel.permissionOverwrites.edit(PERSONAL_REPORT_HIGH_RANK_ROLE_ID, {
             ViewChannel: true,
@@ -7477,21 +7483,7 @@ async function ensurePortfolioThreads(member, portfolioChannel) {
         if (thread) {
             if (thread.archived) await thread.setArchived(false).catch(() => null);
             if (definition.name === "Чат") {
-                await thread.permissionOverwrites.edit(member.id, {
-                    ViewChannel: true,
-                    SendMessages: true,
-                    ReadMessageHistory: true
-                }).catch(() => null);
-                await thread.permissionOverwrites.edit(PERSONAL_REPORT_VIEW_ROLE_ID, {
-                    ViewChannel: true,
-                    SendMessages: true,
-                    ReadMessageHistory: true
-                }).catch(() => null);
-                await thread.permissionOverwrites.edit(PERSONAL_REPORT_HIGH_RANK_ROLE_ID, {
-                    ViewChannel: true,
-                    SendMessages: true,
-                    ReadMessageHistory: true
-                }).catch(() => null);
+                await thread.members.add(member.id).catch(() => null);
             }
             result.push(thread);
         }
