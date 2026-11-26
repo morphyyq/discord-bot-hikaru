@@ -274,7 +274,8 @@ const APP_TYPE_TITLES = {
     main: "Заявление — Main состав",
     recruit: "Заявление — Recruit",
     academy: "Заявление",
-    capture: "Заявление"
+    capture: "Заявление",
+    capture_special: "Заявление — Каптур-состав"
 };
 
 const APP_STATUS_COLOR = {
@@ -310,6 +311,13 @@ function buildAppBodyText(type, data) {
             appAnswerBox("Имя и возраст (в реале)", data.q2),
             appAnswerBox("Почему хотите попасть в Recruit?", data.q3),
             appAnswerBox("Опыт в рекрутинге / похожих ролях", data.q4)
+        ].join("\n\n");
+    }
+
+    if (type === "capture_special") {
+        return [
+            appAnswerBox("Ваш ник", data.q1),
+            appAnswerBox("Откат с ГГ и каптов", data.q2)
         ].join("\n\n");
     }
 
@@ -466,6 +474,7 @@ function appTypeFromChannelName(name) {
     if (name.startsWith("main")) return "main";
     if (name.startsWith("recruit")) return "recruit";
     if (name.startsWith("academy")) return "academy";
+    if (name.startsWith("captur-")) return "capture_special";
     return "capture";
 }
 
@@ -625,6 +634,12 @@ async function updateOnlineMonitor() {
 // FORUM AUDIT LOGS — отдельная публикация для каждого типа логов
 // =====================================================
 const LOG_THREAD_DEFS = {
+    nicknameUpdate: {
+        name: "✏️ Смена ников",
+        title: "✏️ Смена ника",
+        color: 0x9B59B6,
+        description: "Логи изменения серверных ников участников с указанием инициатора."
+    },
     roleUpdate: {
         name: "👥 Изменение ролей",
         title: "🎭 Изменение ролей",
@@ -1336,6 +1351,7 @@ client.once(Events.ClientReady, async () => {
         new SlashCommandBuilder().setName("composition_panel").setDescription("Отправить ручную panel контроля состава").setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("main_panel").setDescription("Отправить панель заявки в Main состав").setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("recruit_panel").setDescription("Отправить панель заявки в отдел Recruit").setDefaultMemberPermissions(0),
+        new SlashCommandBuilder().setName("capture_panel").setDescription("Отправить панель заявки в каптур-состав").setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("info_panel").setDescription("Отправить информационную панель Majestic RP").setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("rank").setDescription("Посмотреть статистику выполненных отчетов").addUserOption(opt => opt.setName("user").setDescription("Выбрать пользователя")).setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("info").setDescription("Получить личное дело и карточку заявки игрока").addUserOption(opt => opt.setName("user").setDescription("Выбрать пользователя").setRequired(true)).setDefaultMemberPermissions(0),
@@ -2991,6 +3007,36 @@ Main состав — основа нашей семьи. Здесь играю�
 
                 await channel.send({ embeds: [embed], components: [row] });
                 await i.reply({ content: "✅ Панель заявки в Main успешно создана!", flags: MessageFlags.Ephemeral });
+                return;
+            }
+
+            // =====================================================
+            // ПАНЕЛЬ ЗАЯВКИ В КАПТУР-СОСТАВ
+            // =====================================================
+            if (i.commandName === "capture_panel") {
+                await i.deferReply({ flags: MessageFlags.Ephemeral });
+                const capturePanel = new ContainerBuilder()
+                    .setAccentColor(0x8B0000)
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+`## 🛡️ Заявка в каптур-состав
+
+Заполни форму и приложи доказательства. После проверки администратор выберет тир C, B или A.`
+                    ))
+                    .addSeparatorComponents(new SeparatorBuilder())
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+`**Поля заявки:**
+• Ваш ник
+• Откат с ГГ и каптов`
+                    ))
+                    .addActionRowComponents(new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId("open_capture_application_modal")
+                            .setLabel("Подать заявку")
+                            .setEmoji("🛡️")
+                            .setStyle(ButtonStyle.Danger)
+                    ));
+                await i.channel.send({ components: [capturePanel], flags: MessageFlags.IsComponentsV2 });
+                await i.editReply({ content: "✅ Панель заявки в каптур-состав отправлена." });
                 return;
             }
 
@@ -5748,6 +5794,21 @@ Main состав — основа нашей семьи. Здесь играю�
             return;
         }
 
+        if (i.isButton() && i.customId === "open_capture_application_modal") {
+            const modal = new ModalBuilder()
+                .setCustomId("capture_application_modal")
+                .setTitle("Заявка в каптур-состав");
+            const fields = [
+                { id: "q1", label: "Ваш ник", placeholder: "Hikaru | 21074", style: TextInputStyle.Short },
+                { id: "q2", label: "Откат с ГГ и каптов", placeholder: "Ссылка или ссылки на откат с ГГ и каптов", style: TextInputStyle.Paragraph }
+            ];
+            modal.addComponents(...fields.map(f => new ActionRowBuilder().addComponents(
+                new TextInputBuilder().setCustomId(f.id).setLabel(f.label).setPlaceholder(f.placeholder).setRequired(true).setStyle(f.style)
+            )));
+            await i.showModal(modal);
+            return;
+        }
+
         if (i.isButton() && i.customId === "open_main_modal") {
             const type = "main";
             const modal = new ModalBuilder()
@@ -5818,6 +5879,59 @@ Main состав — основа нашей семьи. Здесь играю�
             );
 
             await i.showModal(modal);
+            return;
+        }
+
+        if (i.isModalSubmit() && i.customId === "capture_application_modal") {
+            await i.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
+            if (modalLocks.has(i.user.id)) {
+                await i.editReply({ content: "⚠️ Заявка уже обрабатывается. Попробуйте ещё раз через несколько секунд." }).catch(() => null);
+                return;
+            }
+            modalLocks.add(i.user.id);
+            setTimeout(() => modalLocks.delete(i.user.id), 5000);
+            const targetCategory = config.CHANNELS.CATEGORY;
+            const expectedChannelName = `captur-${i.user.username}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
+            await i.guild.channels.fetch().catch(() => null);
+            const existingChannel = i.guild.channels.cache.find(c => c.parentId === targetCategory && c.name === expectedChannelName);
+            if (existingChannel) {
+                await i.editReply({ content: `⚠️ Ваша заявка уже создана: <#${existingChannel.id}>` }).catch(() => null);
+                return;
+            }
+            const data = {
+                type: "capture_special",
+                q1: i.fields.getTextInputValue("q1"),
+                q2: i.fields.getTextInputValue("q2"),
+                q3: null,
+                q4: null,
+                q5: null,
+                userId: i.user.id
+            };
+            applications.set(i.user.id, data);
+            const channel = await i.guild.channels.create({
+                name: expectedChannelName,
+                type: ChannelType.GuildText,
+                parent: targetCategory,
+                permissionOverwrites: [
+                    { id: i.guild.id, deny: ["ViewChannel"] },
+                    { id: i.user.id, allow: ["ViewChannel", "SendMessages"] },
+                    ...(config.ALLOWED_ROLES || []).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages"] }))
+                ]
+            });
+            await channel.send({
+                components: [buildAppContainer({
+                    type: "capture_special",
+                    data,
+                    targetId: i.user.id,
+                    username: i.user.username,
+                    statusText: "Ожидает рассмотрения",
+                    statusKey: "pending",
+                    buttonsRow: buildAppButtonsRow(i.user.id)
+                })],
+                flags: MessageFlags.IsComponentsV2
+            });
+            await i.editReply({ content: `✅ Заявка в каптур-состав создана! Канал: <#${channel.id}>` }).catch(() => null);
+            await sendApplicationAudit(i.guild, { status: "Подана", data, type: "capture_special", targetId: i.user.id, username: i.user.username, channelId: channel.id });
             return;
         }
 
@@ -6058,6 +6172,41 @@ ${data.q5}
             return;
         }
 
+        if (i.isStringSelectMenu() && i.customId.startsWith("capture_tier_select_")) {
+            const adminMember = await i.guild.members.fetch(i.user.id).catch(() => null);
+            const isAdmin = adminMember && (config.ALLOWED_ROLES || []).some(role => adminMember.roles.cache.has(role));
+            if (!isAdmin) {
+                await i.reply({ content: "❌ Вы не можете выбрать тир для заявки.", flags: MessageFlags.Ephemeral }).catch(() => null);
+                return;
+            }
+            const targetId = i.customId.replace("capture_tier_select_", "");
+            const tierRoleId = i.values[0];
+            const tierNames = {
+                "1574495524281651310": "Тир C (3)",
+                "1574496921308110998": "Тир B (2)",
+                "1574495275005911062": "Тир A (1)"
+            };
+            const targetMember = await i.guild.members.fetch(targetId).catch(() => null);
+            if (!targetMember) {
+                await i.update({ content: "❌ Пользователь не найден на сервере.", components: [] }).catch(() => null);
+                return;
+            }
+            const data = applications.get(targetId) || { type: "capture_special", q1: "Данные после перезапуска недоступны", q2: "—", q3: null, q4: null, q5: null, userId: targetId };
+            await targetMember.roles.add(["1329516982797865041", "1125662483126943794", tierRoleId]).catch(() => null);
+            await targetMember.roles.remove(config.GUEST_ROLE_ID).catch(() => null);
+            await sendApplicationAudit(i.guild, { status: "Принята", data, type: "capture_special", targetId, username: targetMember.user.username, channelId: i.channel.id, actorId: i.user.id });
+            await i.channel.send({
+                components: [buildAppContainer({ type: "capture_special", data, targetId, username: targetMember.user.username, statusText: `Принята: ${tierNames[tierRoleId] || "тир выбран"}`, statusKey: "accepted", reviewerId: i.user.id })],
+                flags: MessageFlags.IsComponentsV2
+            }).catch(() => null);
+            await i.update({ content: `✅ Заявка принята. Выдан ${tierNames[tierRoleId] || "выбранный тир"}.`, components: [] }).catch(() => null);
+            await targetMember.send(`✅ Твоя заявка в каптур-состав Hikaru принята. Тебе выдан ${tierNames[tierRoleId] || "выбранный тир"}.`).catch(() => null);
+            await i.channel.permissionOverwrites.edit(targetId, { ViewChannel: false, SendMessages: false }).catch(() => null);
+            await i.channel.setName(`accepted-${targetMember.user.username}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '')).catch(() => null);
+            applications.delete(targetId);
+            return;
+        }
+
         if (i.isButton() || (i.isStringSelectMenu() && i.customId.startsWith("app_action_"))) {
             const parts = i.isStringSelectMenu()
                 ? ["app", i.values[0], i.customId.replace("app_action_", "")]
@@ -6155,6 +6304,19 @@ ${data.q5}
                 const appUsername = targetMember?.user?.username || targetId;
 
                 if (action === "accept") {
+                    const specialCapture = appData?.type === "capture_special" || i.channel.name.startsWith("captur-");
+                    if (specialCapture) {
+                        const tierMenu = new StringSelectMenuBuilder()
+                            .setCustomId(`capture_tier_select_${targetId}`)
+                            .setPlaceholder("Выберите тир для выдачи")
+                            .addOptions(
+                                { label: "Тир C (3)", value: "1574495524281651310", description: "Выдать тир C" },
+                                { label: "Тир B (2)", value: "1574496921308110998", description: "Выдать тир B" },
+                                { label: "Тир A (1)", value: "1574495275005911062", description: "Выдать тир A" }
+                            );
+                        await i.reply({ content: "Выберите тир, который нужно выдать кандидату:", components: [new ActionRowBuilder().addComponents(tierMenu)], flags: MessageFlags.Ephemeral });
+                        return;
+                    }
                     if (!targetMember) {
                         await i.reply({ content: "❌ Пользователь вышел с сервера.", flags: MessageFlags.Ephemeral });
                         return;
@@ -7262,6 +7424,16 @@ async function sendRpReportToPersonalChannel(guild, userId, rpData, evidenceUrl)
 
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     try {
+        if (!oldMember.user.bot && oldMember.nickname !== newMember.nickname) {
+            const nicknameAudit = await findRecentAuditEntry(newMember.guild, AuditLogEvent.MemberUpdate, newMember.id);
+            await sendForumLog(newMember.guild, "nicknameUpdate", [
+                `**Кто изменил:** ${formatAuditExecutor(nicknameAudit)}`,
+                `**Участник:** <@${newMember.id}> (${clipLogText(newMember.user.tag)})`,
+                `**Старый ник:** ${clipLogText(oldMember.nickname || newMember.user.username)}`,
+                `**Новый ник:** ${clipLogText(newMember.nickname || newMember.user.username)}`
+            ], { title: "✏️ Смена ника", color: 0x9B59B6 });
+        }
+
         // Роли без @everyone до и после изменения
         const oldRoles = oldMember.roles.cache.filter(r => r.id !== newMember.guild.id);
         const newRoles = newMember.roles.cache.filter(r => r.id !== newMember.guild.id);
