@@ -3,9 +3,15 @@ process.env.LANG = "en_US.UTF-8";
 
 const { MongoClient } = require("mongodb");
 const express = require("express");
+const path = require("path");
 
 // Генерируем уникальный ID для этой запущенной копии бота
 const INSTANCE_ID = Math.random().toString(36).substring(2, 7).toUpperCase();
+
+const BANNER_DIR = path.join(__dirname, "assets");
+function createBannerAttachment(fileName) {
+    return new AttachmentBuilder(path.join(BANNER_DIR, fileName), { name: fileName });
+}
 
 const {
     Client,
@@ -822,7 +828,7 @@ async function updateAFKEmbed(guild) {
         const channel = await guild.channels.fetch(afkChannelId).catch(() => null);
         if (!channel) return;
 
-        const AFK_BANNER_URL = "https://cdn.discordapp.com/attachments/1540014036081446922/1540289845220479016/ChatGPT_Image_21_._2026_._12_21_18.png?ex=6a896a34&is=6a8818b4&hm=387ec5f6b06641c1e530d2a67e9a51bfa4af8dafe6503bfe6b5e1e7de6f2b7b6&";
+        const AFK_BANNER_URL = "attachment://afk-banner.png";
         const afkEntries = Object.entries(salary.afk);
         const total = afkEntries.length;
 
@@ -876,7 +882,8 @@ async function updateAFKEmbed(guild) {
 
         const payload = {
             components: [container],
-            flags: MessageFlags.IsComponentsV2
+                flags: MessageFlags.IsComponentsV2,
+            files: [createBannerAttachment("afk-banner.png")]
         };
 
         const messages = await channel.messages.fetch({ limit: 20 }).catch(() => null);
@@ -2898,7 +2905,7 @@ client.on(Events.InteractionCreate, async (i) => {
                 if (!config || !config.CHANNELS || !config.CHANNELS.PANEL) return;
                 const channel = await client.channels.fetch(config.CHANNELS.PANEL);
 
-                const PANEL_BANNER_URL = "https://media.discordapp.net/attachments/1540014036081446922/1541149637073961141/ChatGPT_Image_21_._2026_._11_35_24.png?ex=6a8c8af2&is=6a8b3972&hm=79aaf5715073d6094f9977a05ad0cb4de4628af7186a7bf146fdf38216a904e4&=&format=webp&quality=lossless";
+                const PANEL_BANNER_URL = "attachment://family-banner.png";
 
                 const panelContainer = {
                     components: [
@@ -2940,7 +2947,7 @@ client.on(Events.InteractionCreate, async (i) => {
                     flags: 1 << 15 // IS_COMPONENTS_V2
                 };
 
-                await channel.send(panelContainer);
+                await channel.send({ ...panelContainer, files: [createBannerAttachment("family-banner.png")] });
                 await i.reply({ content: "✅ Панель успешно создана!", flags: MessageFlags.Ephemeral });
                 return;
             }
@@ -2993,7 +3000,7 @@ Main состав — основа нашей семьи. Здесь играю�
                 if (!config || !config.CHANNELS || !config.CHANNELS.RECRUIT) return;
                 const channel = await client.channels.fetch(config.CHANNELS.RECRUIT);
 
-                const RECRUIT_BANNER_URL = "https://cdn.discordapp.com/attachments/1540014036081446922/1540312552729485312/ChatGPT_Image_21_._2026_._13_51_56.png?ex=6a897f5a&is=6a882dda&hm=f35104585919ffe811048b944ac75553840f2642384210aba7ea2de2a524ab92&";
+                const RECRUIT_BANNER_URL = "attachment://recruit-banner.png";
 
                 const row = new ActionRowBuilder().addComponents(
                     new StringSelectMenuBuilder()
@@ -3037,7 +3044,8 @@ Main состав — основа нашей семьи. Здесь играю�
 
                 await channel.send({
                     components: [recruitPanelContainer],
-                    flags: MessageFlags.IsComponentsV2
+                    flags: MessageFlags.IsComponentsV2,
+                    files: [createBannerAttachment("recruit-banner.png")]
                 });
                 await i.reply({ content: "✅ Панель заявки в Recruit успешно создана!", flags: MessageFlags.Ephemeral });
                 return;
@@ -3241,7 +3249,7 @@ Main состав — основа нашей семьи. Здесь играю�
             if (i.commandName === "shop_panel") {
                 await i.deferReply({ flags: MessageFlags.Ephemeral });
 
-                const SHOP_BANNER_URL = "https://cdn.discordapp.com/attachments/1540014036081446922/1540287038916526100/ChatGPT_Image_21_._2026_._12_10_20.png?ex=6a896797&is=6a881617&hm=f27de9f632adc54a3a42da4030571f1f5f65e407d67cc15f3598e239ba33ce08&";
+                const SHOP_BANNER_URL = "attachment://shop-banner.png";
 
                 const shopContainer = {
                     components: [
@@ -3341,7 +3349,7 @@ Main состав — основа нашей семьи. Здесь играю�
                     flags: 1 << 15 // IS_COMPONENTS_V2
                 };
 
-                await i.channel.send(shopContainer);
+                await i.channel.send({ ...shopContainer, files: [createBannerAttachment("shop-banner.png")] });
                 await i.editReply({ content: "✅ Панель магазина успешно создана!" });
                 return;
             }
@@ -3352,7 +3360,7 @@ Main состав — основа нашей семьи. Здесь играю�
             if (i.commandName === "interaction_panel") {
                 await i.deferReply({ flags: MessageFlags.Ephemeral });
 
-                const BANNER_URL = "https://cdn.discordapp.com/attachments/1540014036081446922/1540283283227541625/ChatGPT_Image_21_._2026_._11_55_37.png?ex=6a896417&is=6a881297&hm=63ab8d52865c69d26e030f42afef6bf11c16404f12aa3a8ad79f6f84e4e2a768&";
+                const BANNER_URL = "attachment://interaction-banner.png";
 
                 const containerMessage = {
                     components: [
@@ -3410,7 +3418,7 @@ Main состав — основа нашей семьи. Здесь играю�
                     flags: 1 << 15 // IS_COMPONENTS_V2
                 };
 
-                await i.channel.send(containerMessage);
+                await i.channel.send({ ...containerMessage, files: [createBannerAttachment("interaction-banner.png")] });
                 await i.editReply({ content: "✅ Панель взаимодействия успешно создана!" });
                 return;
             }
