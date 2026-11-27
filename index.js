@@ -1397,6 +1397,12 @@ client.once(Events.ClientReady, async () => {
                 opt.setName("amount").setDescription("Сумма для начисления (например 10000)").setRequired(true).setMinValue(1)
             )
             .setDefaultMemberPermissions(0),
+        new SlashCommandBuilder()
+            .setName("clear_recruit_salary")
+            .setDescription("Списать указанную сумму с зарплаты рекрута")
+            .addUserOption(opt => opt.setName("user").setDescription("Рекрут").setRequired(true))
+            .addIntegerOption(opt => opt.setName("amount").setDescription("Сколько списать").setRequired(true).setMinValue(1))
+            .setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("report_panel").setDescription("Отправить широкую panel системы повышений").setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("afk_panel").setDescription("Отправить panel ручного управления АФК статусом").setDefaultMemberPermissions(0),
         new SlashCommandBuilder().setName("afk_list").setDescription("Вызвать / обновить панель АФК списка в канале").setDefaultMemberPermissions(0),
@@ -2758,6 +2764,24 @@ client.on(Events.InteractionCreate, async (i) => {
                 return;
             }
 
+
+            if (i.commandName === "clear_recruit_salary") {
+                const targetUser = i.options.getUser("user");
+                const amount = i.options.getInteger("amount");
+                const currentBal = salary.balances[targetUser.id] || 0;
+                const deducted = Math.min(currentBal, amount);
+                const newBal = Math.max(0, currentBal - amount);
+
+                salary.balances[targetUser.id] = newBal;
+                await saveDB(salary);
+                await updateSalaryEmbed(i.guild);
+
+                await i.reply({
+                    content: `✅ С зарплаты рекрута <@${targetUser.id}> списано **$${deducted.toLocaleString()}**.\nБыло: **$${currentBal.toLocaleString()}** → Стало: **$${newBal.toLocaleString()}**`,
+                    flags: MessageFlags.Ephemeral
+                });
+                return;
+            }
 
             // =====================================================
             // МП ПАНЕЛЬ
@@ -7544,9 +7568,8 @@ async function ensurePortfolioThreads(member, portfolioChannel) {
 
         if (thread) {
             if (thread.archived) await thread.setArchived(false).catch(() => null);
-            if (definition.name === "Чат") {
-                await thread.members.add(member.id).catch(() => null);
-            }
+            // Владелец и чекеры получают доступ через права родительского канала.
+            // Не добавляем их в thread.members, чтобы Discord не создавал лишние записи аудита.
             result.push(thread);
         }
     }
