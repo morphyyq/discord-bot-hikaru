@@ -88,6 +88,7 @@ client.on(Events.Error, (error) => {
 // =====================================================
 const TARGET_GUILD_ID = "1115707156835074208";
 const CAPTURE_BLACKLIST_ROLE_IDS = ["1574495846203002890", "1574495996396707963"];
+const CAPTURE_TIER_ROLE_IDS = ["1574495524281651310", "1574496921308110998", "1574495275005911062"];
 
 function getApplicationManagerRoles(config) {
     return [...new Set([
@@ -3144,7 +3145,7 @@ Main состав — основа нашей семьи. Здесь играю�
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(
 `## 🛡️ Заявка в Capture-состав
 
-Хочешь попасть в состав? Покажи свой никнейм и приложи качественный откат.
+Хочешь попасть в состав? Тебе сюда.
 
 **Важно:** заявку рассматривает только Chief Capture.`
                     ))
@@ -5974,6 +5975,23 @@ Main состав — основа нашей семьи. Здесь играю�
         ) {
             const type = i.isStringSelectMenu() ? i.values[0] : "capture_join";
             const isBlacklist = type === "capture_blacklist_remove";
+            const applicantMember = await i.guild.members.fetch(i.user.id).catch(() => null);
+            if (!applicantMember) {
+                await i.reply({ content: "❌ Не удалось проверить ваши роли.", flags: MessageFlags.Ephemeral }).catch(() => null);
+                return;
+            }
+            if (!isBlacklist && CAPTURE_TIER_ROLE_IDS.some(roleId => applicantMember.roles.cache.has(roleId))) {
+                await i.reply({ content: "❌ У вас уже есть тир Capture. Подавать новую заявку в Capture-состав нельзя.", flags: MessageFlags.Ephemeral }).catch(() => null);
+                return;
+            }
+            if (isBlacklist && applicantMember.roles.cache.has("1574495846203002890")) {
+                await i.reply({ content: "❌ Роль «ЧС КАПТ БЕЗ АМНИСТИИ» не позволяет подавать заявку на снятие ЧС.", flags: MessageFlags.Ephemeral }).catch(() => null);
+                return;
+            }
+            if (isBlacklist && !CAPTURE_BLACKLIST_ROLE_IDS.some(roleId => applicantMember.roles.cache.has(roleId))) {
+                await i.reply({ content: "❌ У вас нет роли ЧС каптов, поэтому заявка на снятие ЧС недоступна.", flags: MessageFlags.Ephemeral }).catch(() => null);
+                return;
+            }
             const modal = new ModalBuilder()
                 .setCustomId(`capture_department_modal_${isBlacklist ? "blacklist" : "join"}`)
                 .setTitle(isBlacklist ? "Снятие ЧС каптов" : "Заявка в Capture-состав");
@@ -6070,6 +6088,23 @@ Main состав — основа нашей семьи. Здесь играю�
         if (i.isModalSubmit() && i.customId.startsWith("capture_department_modal_")) {
             await i.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => null);
             const isBlacklist = i.customId.endsWith("_blacklist");
+            const applicantMember = await i.guild.members.fetch(i.user.id).catch(() => null);
+            if (!applicantMember) {
+                await i.editReply({ content: "❌ Не удалось проверить ваши роли." }).catch(() => null);
+                return;
+            }
+            if (!isBlacklist && CAPTURE_TIER_ROLE_IDS.some(roleId => applicantMember.roles.cache.has(roleId))) {
+                await i.editReply({ content: "❌ У вас уже есть тир Capture. Подавать новую заявку нельзя." }).catch(() => null);
+                return;
+            }
+            if (isBlacklist && applicantMember.roles.cache.has("1574495846203002890")) {
+                await i.editReply({ content: "❌ Роль «ЧС КАПТ БЕЗ АМНИСТИИ» не позволяет подавать заявку на снятие ЧС." }).catch(() => null);
+                return;
+            }
+            if (isBlacklist && !CAPTURE_BLACKLIST_ROLE_IDS.some(roleId => applicantMember.roles.cache.has(roleId))) {
+                await i.editReply({ content: "❌ У вас нет роли ЧС каптов, поэтому заявку подать нельзя." }).catch(() => null);
+                return;
+            }
             const appType = isBlacklist ? "capture_blacklist" : "capture_special";
             const prefix = isBlacklist ? "blacklist" : "captur";
             const expectedChannelName = `${prefix}-${i.user.username}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
