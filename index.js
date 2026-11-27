@@ -5980,6 +5980,10 @@ Main состав — основа нашей семьи. Здесь играю�
                 await i.reply({ content: "❌ Не удалось проверить ваши роли.", flags: MessageFlags.Ephemeral }).catch(() => null);
                 return;
             }
+            if (!isBlacklist && applicantMember.roles.cache.has("1574495846203002890")) {
+                await i.reply({ content: "❌ Роль «ЧС КАПТ БЕЗ АМНИСТИИ» не позволяет подавать заявку в Capture-состав.", flags: MessageFlags.Ephemeral }).catch(() => null);
+                return;
+            }
             if (!isBlacklist && CAPTURE_TIER_ROLE_IDS.some(roleId => applicantMember.roles.cache.has(roleId))) {
                 await i.reply({ content: "❌ У вас уже есть тир Capture. Подавать новую заявку в Capture-состав нельзя.", flags: MessageFlags.Ephemeral }).catch(() => null);
                 return;
@@ -6091,6 +6095,10 @@ Main состав — основа нашей семьи. Здесь играю�
             const applicantMember = await i.guild.members.fetch(i.user.id).catch(() => null);
             if (!applicantMember) {
                 await i.editReply({ content: "❌ Не удалось проверить ваши роли." }).catch(() => null);
+                return;
+            }
+            if (!isBlacklist && applicantMember.roles.cache.has("1574495846203002890")) {
+                await i.editReply({ content: "❌ Роль «ЧС КАПТ БЕЗ АМНИСТИИ» не позволяет подавать заявку в Capture-состав." }).catch(() => null);
                 return;
             }
             if (!isBlacklist && CAPTURE_TIER_ROLE_IDS.some(roleId => applicantMember.roles.cache.has(roleId))) {
