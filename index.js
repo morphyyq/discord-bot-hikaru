@@ -103,7 +103,7 @@ function getCaptureManagerRoles(config) {
 
 function isCaptureApplicationChannel(channel) {
     const name = String(channel?.name || "");
-    return name.startsWith("capture-") || name.startsWith("captur-") || name.startsWith("blacklist-");
+    return name.startsWith("capture-") || name.startsWith("capture-dept-") || name.startsWith("blacklist-");
 }
 
 async function syncApplicationManagerAccess(guild) {
@@ -537,7 +537,7 @@ function appTypeFromChannelName(name) {
     if (name.startsWith("main")) return "main";
     if (name.startsWith("recruit")) return "recruit";
     if (name.startsWith("academy")) return "academy";
-    if (name.startsWith("captur-")) return "capture_special";
+    if (name.startsWith("capture-dept-")) return "capture_special";
     if (name.startsWith("blacklist-")) return "capture_blacklist";
     return "capture";
 }
@@ -6114,7 +6114,7 @@ Main состав — основа нашей семьи. Здесь играю�
                 return;
             }
             const appType = isBlacklist ? "capture_blacklist" : "capture_special";
-            const prefix = isBlacklist ? "blacklist" : "captur";
+            const prefix = isBlacklist ? "blacklist" : "capture-dept";
             const expectedChannelName = `${prefix}-${i.user.username}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
             const targetCategory = config.CHANNELS.CAPTURE_APPLICATION_CATEGORY || config.CHANNELS.CATEGORY;
             await i.guild.channels.fetch().catch(() => null);
