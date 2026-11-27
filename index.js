@@ -108,7 +108,11 @@ function isCaptureApplicationChannel(channel) {
 async function syncApplicationManagerAccess(guild) {
     const config = SERVERS[guild.id];
     if (!config) return;
-    const categoryIds = new Set([config.CHANNELS.CATEGORY, config.CHANNELS.RECRUIT_CATEGORY].filter(Boolean));
+    const categoryIds = new Set([
+        config.CHANNELS.CATEGORY,
+        config.CHANNELS.RECRUIT_CATEGORY,
+        config.CHANNELS.CAPTURE_APPLICATION_CATEGORY
+    ].filter(Boolean));
     const managerRoles = getApplicationManagerRoles(config);
     for (const channel of guild.channels.cache.values()) {
         if (!channel?.parentId || !categoryIds.has(channel.parentId)) continue;
@@ -149,6 +153,7 @@ const SERVERS = {
             MAIN_CATEGORY: null,
             RECRUIT: "1575163447077896222",
             RECRUIT_CATEGORY: "1575163379360727201",
+            CAPTURE_APPLICATION_CATEGORY: "1533926175183732886",
             AUDIT_MAIN: null,
             AUDIT_RECRUIT: "1575163848338710568",
             AFK: "1575163056110043228",
@@ -3141,7 +3146,7 @@ Main состав — основа нашей семьи. Здесь играю�
 
 Хочешь попасть в состав? Покажи свой никнейм и приложи качественный откат.
 
-**Важно:** заявку рассматривает только чиф Capture.`
+**Важно:** заявку рассматривает только Chief Capture.`
                     ))
                     .addSeparatorComponents(new SeparatorBuilder())
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(
@@ -3150,7 +3155,7 @@ Main состав — основа нашей семьи. Здесь играю�
 • Откаты с МП, B33, MCL и Capture должны быть не старше 60 дней, если они есть.
 • Прикладывай видео или качественные нарезки без обрезанных важных моментов.
 • Для заявки желательно приложить минимум 2 доказательства.
-• Подать заявку можно только во время открытого набора.`
+`
                     ))
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(
 `**Варианты обращения**
@@ -6068,7 +6073,7 @@ Main состав — основа нашей семьи. Здесь играю�
             const appType = isBlacklist ? "capture_blacklist" : "capture_special";
             const prefix = isBlacklist ? "blacklist" : "captur";
             const expectedChannelName = `${prefix}-${i.user.username}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
-            const targetCategory = config.CHANNELS.CATEGORY;
+            const targetCategory = config.CHANNELS.CAPTURE_APPLICATION_CATEGORY || config.CHANNELS.CATEGORY;
             await i.guild.channels.fetch().catch(() => null);
             const existingChannel = i.guild.channels.cache.find(c => c.parentId === targetCategory && c.name === expectedChannelName);
             if (existingChannel) {
@@ -6120,7 +6125,7 @@ Main состав — основа нашей семьи. Здесь играю�
             }
             modalLocks.add(i.user.id);
             setTimeout(() => modalLocks.delete(i.user.id), 5000);
-            const targetCategory = config.CHANNELS.CATEGORY;
+            const targetCategory = config.CHANNELS.CAPTURE_APPLICATION_CATEGORY || config.CHANNELS.CATEGORY;
             const expectedChannelName = `captur-${i.user.username}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
             await i.guild.channels.fetch().catch(() => null);
             const existingChannel = i.guild.channels.cache.find(c => c.parentId === targetCategory && c.name === expectedChannelName);
@@ -6178,7 +6183,9 @@ Main состав — основа нашей семьи. Здесь играю�
             setTimeout(() => modalLocks.delete(i.user.id), 5000);
 
             const type = i.customId.replace("apply_modal_", "");
-            const targetCategory = type === "main" ? config.CHANNELS.MAIN_CATEGORY : config.CHANNELS.CATEGORY;
+            const targetCategory = type === "capture"
+                ? (config.CHANNELS.CAPTURE_APPLICATION_CATEGORY || config.CHANNELS.CATEGORY)
+                : (type === "main" ? config.CHANNELS.MAIN_CATEGORY : config.CHANNELS.CATEGORY);
             const expectedChannelName = `${type}-${i.user.username}`.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
             await i.guild.channels.fetch().catch(() => null);
 
