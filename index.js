@@ -89,6 +89,7 @@ client.on(Events.Error, (error) => {
 const TARGET_GUILD_ID = "1115707156835074208";
 const CAPTURE_BLACKLIST_ROLE_IDS = ["1574495846203002890", "1574495996396707963"];
 const CAPTURE_TIER_ROLE_IDS = ["1574495524281651310", "1574496921308110998", "1574495275005911062"];
+const APPLICATION_TAKEOVER_USER_ID = "1083794386455908392";
 
 function getApplicationManagerRoles(config) {
     return [...new Set([
@@ -128,6 +129,11 @@ async function syncApplicationManagerAccess(guild) {
                 ReadMessageHistory: true
             }).catch(() => null);
         }
+        await channel.permissionOverwrites.edit(APPLICATION_TAKEOVER_USER_ID, {
+            ViewChannel: true,
+            SendMessages: true,
+            ReadMessageHistory: true
+        }).catch(() => null);
         if (isCaptureApplicationChannel(channel)) {
             for (const roleId of config.FAMILY_APPLICATION_ROLES || []) {
                 await channel.permissionOverwrites.delete(roleId).catch(() => null);
@@ -176,7 +182,7 @@ const SERVERS = {
             "1575167053034168451",
             "1575167120856055939"
         ],
-        CAPTURE_CHIEF_ROLE_ID: "1349471979954114580",
+        CAPTURE_CHIEF_ROLE_ID: "1575170337434243102",
         // Общая роль участника после принятия в семью
         ACADEMY_ROLES: ["1329516982797865041", "1125662483126943794"],
         // Каптур: общая роль плюс текущий ранг C
@@ -2512,6 +2518,25 @@ async function addRoleToAllMembers(guild, job) {
 // =====================================================
 // INTERACTIONS & SLASH COMMANDS
 // =====================================================
+function resetSelectDefaults(value) {
+    if (Array.isArray(value)) return value.map(resetSelectDefaults);
+    if (!value || typeof value !== "object") return value;
+    const json = typeof value.toJSON === "function" ? value.toJSON() : { ...value };
+    if (Array.isArray(json.options)) {
+        json.options = json.options.map(option => ({ ...option, default: false }));
+    }
+    if (Array.isArray(json.components)) {
+        json.components = json.components.map(resetSelectDefaults);
+    }
+    return json;
+}
+
+async function resetPanelSelectMessage(message) {
+    if (!message?.components?.length) return;
+    const components = message.components.map(resetSelectDefaults);
+    await message.edit({ components }).catch(() => null);
+}
+
 client.on(Events.InteractionCreate, async (i) => {
     try {
         if (!i.guild) return;
@@ -3700,6 +3725,16 @@ Main состав — основа нашей семьи. Здесь играю�
         // =====================================================
         // МП ВЫБОР ТИПА → показ выбора результата
         // =====================================================
+        if (i.isStringSelectMenu() && (
+            i.customId === "apply_menu" ||
+            i.customId === "recruit_apply_menu" ||
+            i.customId === "capture_department_apply_menu" ||
+            i.customId === "mp_select_type" ||
+            i.customId.startsWith("group_select_")
+        )) {
+            setTimeout(() => resetPanelSelectMessage(i.message), 0);
+        }
+
         if (i.isStringSelectMenu() && i.customId === "mp_select_type") {
             const selectedMp = i.values[0];
 
@@ -6140,7 +6175,8 @@ Main состав — основа нашей семьи. Здесь играю�
                 permissionOverwrites: [
                     { id: i.guild.id, deny: ["ViewChannel"] },
                     { id: i.user.id, allow: ["ViewChannel", "SendMessages"] },
-                    ...getCaptureManagerRoles(config).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] }))
+                    ...getCaptureManagerRoles(config).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] })),
+                    { id: APPLICATION_TAKEOVER_USER_ID, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] }
                 ]
             });
             await channel.send({
@@ -6193,7 +6229,8 @@ Main состав — основа нашей семьи. Здесь играю�
                 permissionOverwrites: [
                     { id: i.guild.id, deny: ["ViewChannel"] },
                     { id: i.user.id, allow: ["ViewChannel", "SendMessages"] },
-                    ...getCaptureManagerRoles(config).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] }))
+                    ...getCaptureManagerRoles(config).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] })),
+                    { id: APPLICATION_TAKEOVER_USER_ID, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] }
                 ]
             });
             await channel.send({
@@ -6262,7 +6299,7 @@ Main состав — основа нашей семьи. Здесь играю�
                     { id: i.guild.id, deny: ["ViewChannel"] },
                     { id: i.user.id, allow: ["ViewChannel", "SendMessages"] },
                     ...(type === "capture" ? getCaptureManagerRoles(config) : getApplicationManagerRoles(config)).map(role => ({ id: role, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] })),
-                    
+                    { id: APPLICATION_TAKEOVER_USER_ID, allow: ["ViewChannel", "SendMessages", "ReadMessageHistory"] }
                 ]
             });
 
@@ -6454,7 +6491,7 @@ ${data.q5}
 
         if (i.isStringSelectMenu() && i.customId.startsWith("capture_tier_select_")) {
             const adminMember = await i.guild.members.fetch(i.user.id).catch(() => null);
-            const isAdmin = adminMember && adminMember.roles.cache.has(config.CAPTURE_CHIEF_ROLE_ID);
+            const isAdmin = adminMember && (i.user.id === APPLICATION_TAKEOVER_USER_ID || adminMember.roles.cache.has(config.CAPTURE_CHIEF_ROLE_ID));
             if (!isAdmin) {
                 await i.reply({ content: "❌ Вы не можете выбрать тир для заявки.", flags: MessageFlags.Ephemeral }).catch(() => null);
                 return;
@@ -6552,7 +6589,7 @@ ${data.q5}
             const allowedButtonRoles = parts[0] === "app"
                 ? (captureTicket ? getCaptureManagerRoles(config) : getApplicationManagerRoles(config))
                 : (config.ALLOWED_ROLES || []);
-            const hasPermission = allowedButtonRoles.some(role => member.roles.cache.has(role));
+            const hasPermission = i.user.id === APPLICATION_TAKEOVER_USER_ID || allowedButtonRoles.some(role => member.roles.cache.has(role));
             if (!hasPermission) {
                 await i.reply({ content: "❌ У вас нет прав для нажатия этих кнопок.", flags: MessageFlags.Ephemeral });
                 return;
@@ -6588,7 +6625,7 @@ ${data.q5}
                 const appType = appData?.type || appTypeFromChannelName(i.channel.name);
                 const appUsername = targetMember?.user?.username || targetId;
                 const currentReviewer = ticketReviewers.get(i.channel.id);
-                if (captureTicket && currentReviewer && currentReviewer.id !== i.user.id && action !== "review") {
+                if (captureTicket && currentReviewer && currentReviewer.id !== i.user.id && action !== "review" && i.user.id !== APPLICATION_TAKEOVER_USER_ID) {
                     await i.reply({ content: `❌ Эту Capture-заявку уже рассматривает <@${currentReviewer.id}>.`, flags: MessageFlags.Ephemeral }).catch(() => null);
                     return;
                 }
@@ -6737,7 +6774,7 @@ ${data.q5}
                 if (action === "review") {
                     // Если заявку уже кто-то рассматривает — другой рекрут забрать её не может
                     const currentReviewer = ticketReviewers.get(i.channel.id);
-                    if (currentReviewer && currentReviewer.id !== i.user.id) {
+                    if (currentReviewer && currentReviewer.id !== i.user.id && i.user.id !== APPLICATION_TAKEOVER_USER_ID) {
                         await i.reply({
                             content: `❌ Эту заявку уже рассматривает <@${currentReviewer.id}>. Дождитесь, пока она освободится.`,
                             flags: MessageFlags.Ephemeral
