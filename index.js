@@ -482,6 +482,12 @@ function buildAppButtonsRow(targetId, { reviewTaken = false, reviewerTag = null,
             .setMaxValues(1)
             .setDisabled(disableAll)
             .addOptions(
+                ...(reviewTaken ? [{
+                    label: "Отменить рассмотрение",
+                    value: "unreview",
+                    description: "Освободить заявку для других сотрудников",
+                    emoji: { name: "↩️" }
+                }] : []),
                 {
                     label: "Принять",
                     value: "accept",
@@ -6566,6 +6572,27 @@ ${data.q5}
                 if (action === "reject") {
                     await i.reply({ content: "❌ Отчёт планшета отклонён. Сообщение удалено.", flags: MessageFlags.Ephemeral });
                     await i.message.delete().catch(() => null);
+                    return;
+                }
+
+                if (action === "unreview") {
+                    const currentReviewer = ticketReviewers.get(i.channel.id);
+                    if (!currentReviewer || (currentReviewer.id !== i.user.id && i.user.id !== APPLICATION_TAKEOVER_USER_ID)) {
+                        await i.reply({ content: "❌ Только текущий рассматривающий может отменить рассмотрение.", flags: MessageFlags.Ephemeral }).catch(() => null);
+                        return;
+                    }
+                    ticketReviewers.delete(i.channel.id);
+                    const pendingContainer = buildAppContainer({
+                        type: appType,
+                        data: appData,
+                        targetId,
+                        username: appUsername,
+                        statusText: "Ожидает рассмотрения",
+                        statusKey: "pending",
+                        reviewerId: null,
+                        buttonsRow: buildAppButtonsRow(targetId)
+                    });
+                    await i.update({ components: [pendingContainer], flags: MessageFlags.IsComponentsV2 });
                     return;
                 }
 
