@@ -6575,27 +6575,6 @@ ${data.q5}
                     return;
                 }
 
-                if (action === "unreview") {
-                    const currentReviewer = ticketReviewers.get(i.channel.id);
-                    if (!currentReviewer || (currentReviewer.id !== i.user.id && i.user.id !== APPLICATION_TAKEOVER_USER_ID)) {
-                        await i.reply({ content: "❌ Только текущий рассматривающий может отменить рассмотрение.", flags: MessageFlags.Ephemeral }).catch(() => null);
-                        return;
-                    }
-                    ticketReviewers.delete(i.channel.id);
-                    const pendingContainer = buildAppContainer({
-                        type: appType,
-                        data: appData,
-                        targetId,
-                        username: appUsername,
-                        statusText: "Ожидает рассмотрения",
-                        statusKey: "pending",
-                        reviewerId: null,
-                        buttonsRow: buildAppButtonsRow(targetId)
-                    });
-                    await i.update({ components: [pendingContainer], flags: MessageFlags.IsComponentsV2 });
-                    return;
-                }
-
                 if (action === "accept") {
                     salary.balances[recruiterId] = (salary.balances[recruiterId] || 0) + 10000;
                     
@@ -6654,6 +6633,34 @@ ${data.q5}
                 const currentReviewer = ticketReviewers.get(i.channel.id);
                 if (captureTicket && currentReviewer && currentReviewer.id !== i.user.id && action !== "review" && i.user.id !== APPLICATION_TAKEOVER_USER_ID) {
                     await i.reply({ content: `❌ Эту Capture-заявку уже рассматривает <@${currentReviewer.id}>.`, flags: MessageFlags.Ephemeral }).catch(() => null);
+                    return;
+                }
+
+                if (action === "unreview") {
+                    if (!currentReviewer || (currentReviewer.id !== i.user.id && i.user.id !== APPLICATION_TAKEOVER_USER_ID)) {
+                        await i.reply({
+                            content: "❌ Только текущий рассматривающий может отменить рассмотрение.",
+                            flags: MessageFlags.Ephemeral
+                        }).catch(() => null);
+                        return;
+                    }
+
+                    ticketReviewers.delete(i.channel.id);
+                    const pendingContainer = buildAppContainer({
+                        type: appType,
+                        data: appData,
+                        targetId,
+                        username: appUsername,
+                        statusText: "Ожидает рассмотрения",
+                        statusKey: "pending",
+                        reviewerId: null,
+                        buttonsRow: buildAppButtonsRow(targetId)
+                    });
+
+                    await i.update({
+                        components: [pendingContainer],
+                        flags: MessageFlags.IsComponentsV2
+                    });
                     return;
                 }
 
